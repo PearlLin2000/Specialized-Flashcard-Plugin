@@ -2,13 +2,13 @@
   "name": "Specialized-Flashcard-Plugin",
   "author": "PearlLin",
   "url": "https://github.com/PearlLin2000/Specialized-Flashcard-Plugin",
-  "version": "0.4.1",
-  "minAppVersion": "3.2.1",
+  "version": "0.1.1",
+  "minAppVersion": "3.3.0",
   "disabledInPublish": true,
   "backends": ["windows"],
   "frontends": ["desktop"],
   "displayName": {
-    "en_US": "Specialized-Flashcard-Plugin",
+    "en_US": "Specialized Flashcard Plugin",
     "zh_CN": "专项闪卡插件"
   },
   "description": {
@@ -22,5 +22,5 @@
   "funding": {
     "custom": [""]
   },
-  "keywords": ["plugin", "flashcard", "闪卡"]
+  "keywords": [""]
 }
