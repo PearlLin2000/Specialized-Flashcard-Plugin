@@ -6,7 +6,7 @@ import {
   Menu,
   openTab,
   getFrontend,
-  fetchSyncPost,
+  //fetchSyncPost,
 } from "siyuan";
 import "./index.scss";
 import GroupManager from "./GroupManager/GroupManager.svelte";
@@ -146,15 +146,15 @@ export default class PluginSample extends Plugin {
         100,
         100
       );
-      console.log(
+      /*(
         `分组 "${group.name}" 查询完成，获取 ${sqlResult.length} 条原始数据`
-      );
+      );*/
 
       // 使用优化后的递归查找
       const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-      console.log(
+      /*(
         `分组 "${group.name}" 递归查找完成，得到 ${blockIds.length} 个闪卡块`
-      );
+      );*/
 
       if (!blockIds || blockIds.length === 0) {
         showMessage(`分组 "${group.name}" 未找到匹配的块`);
@@ -194,29 +194,72 @@ export default class PluginSample extends Plugin {
     showMessage(`文档流显示的为原始查询，不包含内置的闪卡过滤`);
   }
 
-  private startScheduledTasks() {
+  private startScheduledTasks(): void {
     this.stopScheduledTasks();
 
     const config = this.dataManager.getConfig();
 
-    if (config.priorityScanEnabled) {
-      const priorityIntervalMs = config.priorityScanInterval * 60 * 1000;
-      console.log(`启动优先级扫描任务，间隔${config.priorityScanInterval}分钟`);
-      this.priorityScanTimer = window.setInterval(() => {
+    // 使用辅助方法创建定时任务，统一错误处理
+    this.createPriorityScanTask(config);
+    this.createCacheUpdateTask(config);
+  }
+
+  private createPriorityScanTask(config: any): void {
+    if (!config.priorityScanEnabled) return;
+
+    const intervalMs = config.priorityScanInterval * 60 * 1000;
+
+    // 封装任务执行逻辑
+    const executeTask = () => {
+      try {
         this.executePriorityScanTasks();
-      }, priorityIntervalMs);
+        console.log("优先级扫描及设置执行完毕");
+      } catch (error) {
+        console.error("优先级扫描任务执行失败:", error);
+        // 可以根据错误类型决定是否停止定时器
+      }
+    };
+
+    console.log(
+      `启动优先级扫描及设置任务，间隔${config.priorityScanInterval}分钟`
+    );
+
+    this.priorityScanTimer = window.setInterval(executeTask, intervalMs);
+
+    // 立即执行一次
+    executeTask();
+  }
+
+  private createCacheUpdateTask(config: any): void {
+    const intervalMs = config.cacheUpdateInterval * 60 * 1000;
+
+    const executeTask = () => {
+      try {
+        this.executeCacheUpdateTasks();
+        console.log("缓存更新任务执行完毕");
+      } catch (error) {
+        console.error("缓存更新任务执行失败:", error);
+      }
+    };
+
+    console.log(`启动缓存更新任务，间隔${config.cacheUpdateInterval}分钟`);
+
+    this.cacheUpdateTimer = window.setInterval(executeTask, intervalMs);
+
+    // 立即执行一次
+    executeTask();
+  }
+
+  // 建议添加的配套方法
+  private stopScheduledTasks(): void {
+    if (this.priorityScanTimer) {
+      window.clearInterval(this.priorityScanTimer);
+      this.priorityScanTimer = null;
     }
 
-    const cacheIntervalMs = config.cacheUpdateInterval * 60 * 1000;
-    console.log(`启动缓存更新任务，间隔${config.cacheUpdateInterval}分钟`);
-    this.cacheUpdateTimer = window.setInterval(() => {
-      this.executeCacheUpdateTasks();
-    }, cacheIntervalMs);
-
-    this.executeCacheUpdateTasks();
-
-    if (config.priorityScanEnabled) {
-      this.executePriorityScanTasks();
+    if (this.cacheUpdateTimer) {
+      window.clearInterval(this.cacheUpdateTimer);
+      this.cacheUpdateTimer = null;
     }
   }
 
@@ -264,7 +307,7 @@ export default class PluginSample extends Plugin {
     );
     if (enabledGroups.length === 0) return;
 
-    console.log(`开始自动优先级扫描，处理${enabledGroups.length}个分组`);
+    //(`开始自动优先级扫描，处理${enabledGroups.length}个分组`);
 
     for (const group of enabledGroups) {
       await this.scanGroupPriority(group);
@@ -295,12 +338,12 @@ export default class PluginSample extends Plugin {
     ) {
       const cached = this.dataManager.getGroupCache(group.id);
       if (cached) {
-        console.log(`使用缓存数据 for group: ${group.name}`);
+        //(`使用缓存数据 for group: ${group.name}`);
         return cached.blockIds;
       }
     }
 
-    console.log(`开始执行分组查询: ${group.name}`);
+    //(`开始执行分组查询: ${group.name}`);
 
     try {
       // 使用分页查询替代直接查询
@@ -309,15 +352,15 @@ export default class PluginSample extends Plugin {
         100,
         100
       );
-      console.log(
+      /*(
         `分组 ${group.name} 查询完成，获取 ${sqlResult.length} 条原始数据`
-      );
+      );*/
 
       // 使用优化后的递归查找
       const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-      console.log(
+      /*console.log(
         `分组 ${group.name} 递归查找完成，得到 ${blockIds.length} 个闪卡块`
-      );
+      );*/
 
       await this.dataManager.updateGroupCache(group.id, blockIds);
       return blockIds;
@@ -341,7 +384,7 @@ export default class PluginSample extends Plugin {
       groups.forEach((group) => {
         menu.addItem({
           icon: "iconRiffCard",
-          label: group.name,
+          label: "到期：" + group.name,
           click: () => this.createRiffCardsByGroup(group.id),
         });
       });
@@ -419,23 +462,20 @@ export default class PluginSample extends Plugin {
 
   private async scanGroupPriority(group: any): Promise<void> {
     try {
-      console.log(`=== 开始扫描分组 "${group.name}" ===`);
+      //(`=== 开始扫描分组 "${group.name}" ===`);
 
       // 使用分页查询
       const sqlResult = await CardUtils.paginatedSQLQuery(
         group.sqlQuery,
         100,
-        100 // ← 这里也要设置为 100
-      );
-      console.log(
-        `分组 "${group.name}" 查询完成，获取 ${sqlResult.length} 条原始数据`
+        100 //
       );
 
       // 使用优化递归查找
       const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-      console.log(
+      /*console.log(
         `分组 "${group.name}" 递归查找完成，得到 ${blockIds.length} 个闪卡块`
-      );
+      );*/
 
       if (!blockIds || blockIds.length === 0) {
         console.log(`分组 "${group.name}" 未找到匹配的块`);
@@ -443,22 +483,13 @@ export default class PluginSample extends Plugin {
       }
 
       const cards = await CardUtils.getRiffCardsByBlockIds(blockIds);
-      console.log(`获取到闪卡数量: ${cards.length}`);
+      //(`获取到闪卡数量: ${cards.length}`);
 
       const todayCards = CardUtils.filterPureTodayCards(cards);
-      console.log(`今日创建的闪卡数量: ${todayCards.length}`);
-
-      // 调试今日卡片的详细信息
-      todayCards.forEach((card) => {
-        console.log(`今日闪卡:`, {
-          riffCardID: card.riffCardID,
-          blockID: card.blockID,
-          priority: card.priority,
-        });
-      });
+      //(`今日创建的闪卡数量: ${todayCards.length}`);
 
       if (todayCards.length === 0) {
-        console.log(`分组 "${group.name}" 没有今日创建的闪卡`);
+        //(`分组 "${group.name}" 没有今日创建的闪卡`);
         return;
       }
 
@@ -467,16 +498,16 @@ export default class PluginSample extends Plugin {
       );
 
       if (cardsToUpdate.length === 0) {
-        console.log(
+        /*(
           `分组 "${group.name}" 所有今日闪卡已经是目标优先级 ${group.priority}`
-        );
+        );*/
         return;
       }
 
       await CardUtils.setCardsPriority(cardsToUpdate, group.priority);
-      console.log(
+      /*console.log(
         `分组 "${group.name}" 成功设置 ${cardsToUpdate.length} 张闪卡，优先级为 ${group.priority}`
-      );
+      );*/
     } catch (error) {
       console.error(`分组 "${group.name}" 优先级扫描失败:`, error);
     }
@@ -497,7 +528,7 @@ export default class PluginSample extends Plugin {
 
       if (postponableCards.length > 0) {
         await CardUtils.postponeCards(postponableCards, config.postponeDays);
-        console.log(`自动推迟了 ${postponableCards.length} 张今日创建的闪卡`);
+        //console.log(`自动推迟了 ${postponableCards.length} 张今日创建的闪卡`);
       }
     } catch (error) {
       console.error("推迟操作失败:", error);

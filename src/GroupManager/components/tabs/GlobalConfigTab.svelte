@@ -46,9 +46,6 @@
     </div>
   </div>
   
-  <!-- 分割线1 -->
-  <div class="section-divider"></div>
-  
   <!-- 区块2: 自动优先级配置 -->
   <div class="config-section">
     <div class="section-description">
@@ -78,9 +75,6 @@
       </div>
     </div>
   </div>
-  
-  <!-- 分割线2 -->
-  <div class="section-divider"></div>
   
   <!-- 区块3: SQL缓存配置 -->
   <div class="config-section">
@@ -151,13 +145,6 @@
   
   .description-line:last-child {
     margin-bottom: 0;
-  }
-  
-  .section-divider {
-    height: 1px;
-    background: var(--b3-theme-surface-light);
-    margin: 16px 0;
-    width: 100%;
   }
   
   .form-field {

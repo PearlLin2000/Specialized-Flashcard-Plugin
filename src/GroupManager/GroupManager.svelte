@@ -276,7 +276,6 @@
       priorityScanInterval,
       cacheUpdateInterval
     });
-    alert('全局配置已保存');
   }
 </script>
 

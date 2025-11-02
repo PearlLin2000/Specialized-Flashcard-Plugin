@@ -187,7 +187,7 @@ export async function paginatedSQLQuery(
   let allResults: any[] = [];
   let page = 0;
 
-  //console.log(`开始分页查询，每页${pageSize}条，最多${maxPages}页`);
+  //(`开始分页查询，每页${pageSize}条，最多${maxPages}页`);
 
   while (page < maxPages) {
     const offset = page * pageSize;
@@ -205,23 +205,23 @@ export async function paginatedSQLQuery(
     }
 
     try {
-      //console.log(`查询第${page + 1}页, OFFSET: ${offset}`);
+      //(`查询第${page + 1}页, OFFSET: ${offset}`);
 
       const result = await fetchSyncPost("/api/query/sql", {
         stmt: paginatedSQL,
       });
 
       if (!result.data || result.data.length === 0) {
-        //console.log(`第${page + 1}页无数据，查询结束`);
+        //(`第${page + 1}页无数据，查询结束`);
         break;
       }
 
       allResults = allResults.concat(result.data);
-      //console.log(`第${page + 1}页获取到${result.data.length}条数据`);
+      //(`第${page + 1}页获取到${result.data.length}条数据`);
 
       // 如果返回数量小于pageSize，说明已经是最后一页
       if (result.data.length < pageSize) {
-        //console.log(`最后一页数据不足${pageSize}条，查询结束`);
+        //(`最后一页数据不足${pageSize}条，查询结束`);
         break;
       }
 
@@ -236,7 +236,7 @@ export async function paginatedSQLQuery(
     }
   }
 
-  //console.log(`分页查询完成，总共获取${allResults.length}条闪卡数据`);
+  //(`分页查询完成，总共获取${allResults.length}条闪卡数据`);
   return allResults;
 }
 // ============== 4. Card Review Interface ==============
@@ -324,7 +324,7 @@ export async function recursiveFindCardBlocks(
   const foundBlocks = new Set<string>();
   const batchSize = 30; // 新增批次大小参数
 
-  /*console.log(
+  /*(
     `开始递归查找，初始块数: ${startingBlocks.length}, 批次大小: ${batchSize}, 最大深度: ${maxDepth}`
   );*/
 
@@ -333,16 +333,16 @@ export async function recursiveFindCardBlocks(
     depth: number
   ): Promise<void> => {
     if (depth >= maxDepth || blockIds.length === 0) {
-      console.log(`递归深度 ${depth} 达到限制或无可处理块，停止递归`);
+      //(`递归深度 ${depth} 达到限制或无可处理块，停止递归`);
       return;
     }
 
-    //console.log(`深度 ${depth} 处理 ${blockIds.length} 个块`);
+    //(`深度 ${depth} 处理 ${blockIds.length} 个块`);
 
     // 分批处理属性检查
     for (let i = 0; i < blockIds.length; i += batchSize) {
       const batch = blockIds.slice(i, i + batchSize);
-      /*console.log(
+      /*(
         `处理批次 ${Math.floor(i / batchSize) + 1}, 大小: ${batch.length}`
       );*/
 
@@ -357,7 +357,7 @@ export async function recursiveFindCardBlocks(
 
         foundInBatch.forEach((blockId) => foundBlocks.add(blockId));
 
-        /*console.log(
+        /*(
           `批次 ${Math.floor(i / batchSize) + 1} 发现 ${
             foundInBatch.length
           } 个闪卡块`
@@ -375,7 +375,7 @@ export async function recursiveFindCardBlocks(
       (blockId) => !foundBlocks.has(blockId)
     );
 
-    /*console.log(
+    /*(
       `深度 ${depth} 有 ${blocksToContinue.length} 个块需要继续向上查找`
     );*/
 
@@ -385,7 +385,7 @@ export async function recursiveFindCardBlocks(
     const parentIds: string[] = [];
     for (let i = 0; i < blocksToContinue.length; i += batchSize) {
       const batch = blocksToContinue.slice(i, i + batchSize);
-      /*console.log(
+      /*(
         `获取父块批次 ${Math.floor(i / batchSize) + 1}, 大小: ${batch.length}`
       );*/
 
@@ -394,7 +394,7 @@ export async function recursiveFindCardBlocks(
         const validParentIds = batchParentIds.filter((id) => id);
         parentIds.push(...validParentIds);
 
-        /*console.log(
+        /*(
           `批次 ${Math.floor(i / batchSize) + 1} 获取到 ${
             validParentIds.length
           } 个有效父块`
@@ -412,7 +412,7 @@ export async function recursiveFindCardBlocks(
 
     // 去重父块ID
     const uniqueParentIds = [...new Set(parentIds)];
-    //console.log(`去重后得到 ${uniqueParentIds.length} 个唯一父块`);
+    //(`去重后得到 ${uniqueParentIds.length} 个唯一父块`);
 
     if (uniqueParentIds.length > 0) {
       await processBatch(uniqueParentIds, depth + 1);
@@ -423,7 +423,7 @@ export async function recursiveFindCardBlocks(
   await processBatch(startingBlockIds, 0);
 
   const result = Array.from(foundBlocks);
-  console.log(`递归查找完成，总共发现 ${result.length} 个闪卡块`);
+  //(`递归查找完成，总共发现 ${result.length} 个闪卡块`);
   return result;
 }
 

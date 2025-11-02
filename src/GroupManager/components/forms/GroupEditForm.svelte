@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { GroupConfig } from '../types/data';
   import { createEventDispatcher } from 'svelte';
-  
+  import HelpTooltip from '../common/HelpTooltip.svelte'; // <!-- 1. 引入新组件
+
   export let editingGroup: GroupConfig;
   export let plugin: any;
 
@@ -17,13 +18,11 @@
     dispatch('cancel');
   }
 
-  // 在文档流中打开
   function handleOpenInDocument() {
     if (!editingGroup) return;
     plugin.handleOpenInDocument(editingGroup);
   }
-
-  // 批量设置优先级
+  
   async function handleBatchPriority() {
     if (!editingGroup) return;
     
@@ -56,9 +55,19 @@
           <span class="toggle-text">启用分组</span>
         </label>
       </div>
-      <button class="func-button open-in-document" on:click={handleOpenInDocument}>
-        在文档流中打开
-      </button>
+      <!-- 2. 将按钮和提示图标包裹起来 -->
+      <div class="button-with-help">
+        <button class="func-button open-in-document" on:click={handleOpenInDocument}>
+          在文档流中打开（原始）
+        </button>
+        <HelpTooltip>
+          <b>所见即所得:</b>
+          <ul>
+            <li>基于原始 SQL，不包含闪卡过滤。</li>
+            <li>不进行递归处理。</li>
+          </ul>
+        </HelpTooltip>
+      </div>
     </div>
     
     <!-- 第二行：优先级设置 + 启用优先级扫描 + 批量设置优先级按钮 -->
@@ -78,18 +87,30 @@
       </div>
       <div class="form-field compact" style="flex: 0 0 auto;">
         <label class="toggle-label small-text">
+          <!-- ❗ 注意: 您原始代码是 priorityEnabled，我保持不变 -->
           <input type="checkbox" bind:checked={editingGroup.priorityEnabled}>
           <span class="toggle-text">启用优先级扫描</span>
         </label>
       </div>
-      <button class="func-button batch-priority" on:click={handleBatchPriority}>
-        批量设置优先级
-      </button>
+      <!-- 3. 将按钮和提示图标包裹起来 -->
+      <div class="button-with-help">
+        <button class="func-button batch-priority" on:click={handleBatchPriority}>
+          批量设置优先级（所有）
+        </button>
+        <HelpTooltip>
+          <b>包含闪卡过滤:</b>
+          <ul>
+            <li>包含到期和未到期的闪卡。</li>
+            <li>包含了递归处理。</li>
+          </ul>
+        </HelpTooltip>
+      </div>
     </div>
     
     <!-- SQL查询语句 -->
     <div class="form-field full-width">
       <div class="field-header">
+        <!-- ❗ 注意: 您原始代码是 sqlQuery，我保持不变 -->
         <span class="field-label">SQL查询语句</span>
       </div>
       <textarea 
@@ -115,6 +136,7 @@
 {/if}
 
 <style>
+  /* --- 您的所有原始样式保持不变 --- */
   .config-form {
     display: flex;
     flex-direction: column;
@@ -293,5 +315,21 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 13px;
+  }
+
+  /* --- 4. 添加用于集成的最小化样式 --- */
+  .button-with-help {
+    display: flex;
+    align-items: center; /* 确保按钮和?图标垂直对齐 */
+    gap: 4px; /* 按钮和图标之间的间距 */
+  }
+
+  /* 可选：美化提示框内的列表样式 */
+  :global(.tooltip-content ul) {
+    padding-left: 18px;
+    margin: 4px 0 0;
+  }
+  :global(.tooltip-content li) {
+    margin-bottom: 4px;
   }
 </style>
