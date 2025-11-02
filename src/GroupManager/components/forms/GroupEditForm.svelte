@@ -1,10 +1,21 @@
 <script lang="ts">
-  import type { GroupEditFormProps } from '../../types/index.js';
+  import type { GroupConfig } from '../types/data';
+  import { createEventDispatcher } from 'svelte';
   
-  export let editingGroup: GroupEditFormProps['editingGroup'];
-  export let onSave: GroupEditFormProps['onSave'];
-  export let onCancel: GroupEditFormProps['onCancel'];
-  export let plugin: GroupEditFormProps['plugin'];
+  export let editingGroup: GroupConfig;
+  export let plugin: any;
+
+  const dispatch = createEventDispatcher();
+
+  function handleSave() {
+    if (editingGroup) {
+      dispatch('save', editingGroup);
+    }
+  }
+
+  function handleCancel() {
+    dispatch('cancel');
+  }
 
   // 在文档流中打开
   function handleOpenInDocument() {
@@ -23,12 +34,6 @@
       alert('批量设置优先级失败，请检查控制台');
     }
   }
-
-  function handleSave() {
-    if (editingGroup) {
-      onSave(editingGroup);
-    }
-  }
 </script>
 
 {#if editingGroup}
@@ -36,7 +41,9 @@
     <!-- 第一行：分组名称 + 启用分组 + 在文档流中打开按钮 -->
     <div class="form-row form-row-with-button">
       <div class="form-field form-field-main-input">
-        <label class="field-label">分组名称</label>
+        <label class="field-label">
+          分组名称
+        </label>
         <input 
           class="field-input" 
           bind:value={editingGroup.name}
@@ -57,7 +64,9 @@
     <!-- 第二行：优先级设置 + 启用优先级扫描 + 批量设置优先级按钮 -->
     <div class="form-row form-row-with-button">
       <div class="form-field form-field-short-input">
-        <label class="field-label">🍅优先级</label>
+        <label class="field-label">
+          🍅优先级
+        </label>
         <input 
           class="field-input"
           type="number"
@@ -95,7 +104,7 @@
     
     <!-- 表单操作按钮 -->
     <div class="form-actions">
-      <button class="cancel-button" on:click={onCancel}>
+      <button class="cancel-button" on:click={handleCancel}>
         取消
       </button>
       <button class="save-button" on:click={handleSave}>
@@ -123,12 +132,6 @@
     display: flex;
     gap: 20px;
     align-items: flex-end;
-  }
-  
-  .form-row.compact {
-    gap: 15px;
-    align-items: center;
-    margin-bottom: 8px;
   }
   
   .form-row-with-button {

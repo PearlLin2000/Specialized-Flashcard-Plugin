@@ -1,26 +1,41 @@
 <script lang="ts">
-  import type { GroupListProps } from '../../types/index.js';
+  import { createEventDispatcher } from 'svelte';
+  import type { GroupConfig, GroupCategory } from '../types/data';
   
-  export let groups: GroupListProps['groups'] = []; // 🟢 添加默认值
-  export let categories: GroupListProps['categories'] = []; // 🟢 添加默认值
-  export let activeCategoryId: GroupListProps['activeCategoryId'] = '';
-  export let onEditGroup: GroupListProps['onEditGroup'];
-  export let onDeleteGroup: GroupListProps['onDeleteGroup'];
-  export let onToggleGroup: GroupListProps['onToggleGroup'];
-  export let onMoveGroup: GroupListProps['onMoveGroup'];
-  export let onUpdateGroupCategory: GroupListProps['onUpdateGroupCategory'];
+  export let groups: GroupConfig[] = [];
+  export let categories: GroupCategory[] = [];
+  export let activeCategoryId: string = '';
+
+  const dispatch = createEventDispatcher();
+
+  function handleEdit(group: GroupConfig) { dispatch('editGroup', group); }
+  function handleDelete(group: GroupConfig) { dispatch('deleteGroup', group); }
+  function handleToggle(group: GroupConfig) { dispatch('toggleGroup', group); }
+  function handleMove(index: number, direction: 'up' | 'down') { dispatch('moveGroup', { index, direction }); }
+  function handleCategoryUpdate(groupId: string, newCategoryId: string) { dispatch('updateGroupCategory', { groupId, newCategoryId }); }
+
+  /**
+   * 新增的辅助函数，用于处理 change 事件
+   * 它在 TypeScript 上下文中运行，因此可以安全地进行类型断言
+   */
+  function onCategoryChange(event: Event, groupId: string) {
+    const target = event.target as HTMLSelectElement;
+    if (target) {
+      handleCategoryUpdate(groupId, target.value);
+    }
+  }
 </script>
 
 <div class="list-container">
-  {#each groups as group, index} <!-- 🟢 现在 groups 确保是数组 -->
+  {#each groups as group, index}
     <div class="list-item {group.enabled ? '' : 'disabled'}">
       <!-- 组别选择框 -->
       <select 
         class="category-select"
         value={group.categoryId}
-        on:change={(e) => onUpdateGroupCategory(group.id, e.target.value)}
+        on:change={(e) => onCategoryChange(e, group.id)}
       >
-        {#each categories as category} <!-- 🟢 现在 categories 确保是数组 -->
+        {#each categories as category}
           <option value={category.id}>{category.name}</option>
         {/each}
       </select>
@@ -35,21 +50,21 @@
       
       <!-- 操作按钮 -->
       <div class="item-actions-compact">
-        <button class="action-btn-small move-up" on:click={() => onMoveGroup(index, 'up')} disabled={index === 0}>
+        <button class="action-btn-small move-up" on:click={() => handleMove(index, 'up')} disabled={index === 0}>
           ↑
         </button>
-        <button class="action-btn-small move-down" on:click={() => onMoveGroup(index, 'down')} disabled={index === groups.length - 1}>
+        <button class="action-btn-small move-down" on:click={() => handleMove(index, 'down')} disabled={index === groups.length - 1}>
           ↓
         </button>
-        <button class="action-btn-small edit" on:click={() => onEditGroup(group)}>
+        <button class="action-btn-small edit" on:click={() => handleEdit(group)}>
           编辑
         </button>
-        <button class="action-btn-small delete" on:click={() => onDeleteGroup(index)}>
+        <button class="action-btn-small delete" on:click={() => handleDelete(group)}>
           删除
         </button>
         <button 
           class="action-btn-small {group.enabled ? 'enable' : 'disable'}" 
-          on:click={() => onToggleGroup(index)}
+          on:click={() => handleToggle(group)}
         >
           {group.enabled ? '启用' : '禁用'}
         </button>
@@ -66,7 +81,7 @@
 </div>
 
 <style>
-  /* 样式保持不变 */
+  /* 样式部分保持不变 */
   .list-container {
     flex: 1;
     overflow-y: auto;

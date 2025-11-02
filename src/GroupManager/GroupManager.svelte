@@ -4,10 +4,11 @@
   import GlobalConfigTab from './components/tabs/GlobalConfigTab.svelte';
   import GroupEditForm from './components/forms/GroupEditForm.svelte';
   import CategoryEditForm from './components/forms/CategoryEditForm.svelte';
-  import type { GroupConfig, GroupCategory } from './types/index.js';
+  import type { GroupConfig, GroupCategory } from '../types/data';
 
   export let plugin: any;
-  export let onConfigUpdate: (groups: any[]) => void;
+  export let dataManager: any;
+  export let onConfigUpdate: (groups: GroupConfig[]) => void;
   
   const dispatch = createEventDispatcher();
   
@@ -19,38 +20,54 @@
   let isEditing = false;
   let isEditingCategory = false;
   let postponeDays: number = 2;
+  let postponeEnabled: boolean = true;
   let scanInterval: number = 15;
   let priorityScanEnabled: boolean = true;
+  let priorityScanInterval: number = 15;
+  let cacheUpdateInterval: number = 30;
   let activeTab: 'global' | 'sql' = 'sql';
   let activeCategoryId: string = '';
 
   onMount(async () => {
-    await loadGroups();
+    await loadData();
     await loadConfig();
   });
 
-  async function loadGroups() {
+  async function loadData() {
     try {
-      const storedData = await plugin.loadData('menu-config');
-      
-      groupCategories = storedData?.groupCategories || [];
+      // 使用 dataManager 获取数据
+      groupCategories = dataManager.getGroupCategories();
+      groups = dataManager.getGroups();
       
       if (groupCategories.length === 0) {
-        groupCategories = [{ id: generateId(), name: '默认组别' }];
+        // 如果没有类别，创建一个默认类别
+        const defaultCategory = dataManager.getDefaultCategoryTemplate();
+        await dataManager.saveCategory(defaultCategory);
+        groupCategories = [defaultCategory]; // 更新本地状态
       }
       
-      groups = storedData?.groups || [];
       activeCategoryId = groupCategories[0]?.id || '';
       
-      if (groups.length > 0 && !groups[0].categoryId) {
-        groups = groups.map(group => ({
-          ...group,
-          categoryId: activeCategoryId
-        }));
+      // 确保所有分组都有 categoryId
+      let groupsUpdated = false;
+      const updatedGroups = groups.map(group => {
+        if (!group.categoryId) {
+          groupsUpdated = true;
+          return { ...group, categoryId: activeCategoryId };
+        }
+        return group;
+      });
+
+      if (groupsUpdated) {
+        groups = updatedGroups;
+        await dataManager.updateGroups(groups); // 批量更新一次
       }
     } catch (error) {
       console.error('加载分组配置失败:', error);
-      groupCategories = [{ id: generateId(), name: '默认组别' }];
+      // 使用 dataManager 的默认模板
+      const defaultCategory = dataManager.getDefaultCategoryTemplate();
+      await dataManager.saveCategory(defaultCategory);
+      groupCategories = [defaultCategory];
       groups = [];
       activeCategoryId = groupCategories[0].id;
     }
@@ -58,25 +75,36 @@
 
   async function loadConfig() {
     try {
-      const storedData = await plugin.loadData('menu-config');
-      postponeDays = storedData?.postponeDays || 2;
-      scanInterval = storedData?.scanInterval || 15;
-      priorityScanEnabled = storedData?.priorityScanEnabled !== undefined ? storedData.priorityScanEnabled : true;
+      // 使用 dataManager 获取全局配置
+      const globalSettings = dataManager.getGlobalSettings();
+      postponeDays = globalSettings.postponeDays;
+      postponeEnabled = globalSettings.postponeEnabled;
+      scanInterval = globalSettings.scanInterval;
+      priorityScanEnabled = globalSettings.priorityScanEnabled;
+      priorityScanInterval = globalSettings.priorityScanInterval;
+      cacheUpdateInterval = globalSettings.cacheUpdateInterval;
     } catch (error) {
       console.error('加载配置失败:', error);
+      // 使用 dataManager 的默认值
+      postponeDays = 2;
+      postponeEnabled = true;
+      scanInterval = 15;
+      priorityScanEnabled = true;
+      priorityScanInterval = 15;
+      cacheUpdateInterval = 30;
     }
   }
-
-  function generateId(): string {
-    return Math.random().toString(36).substring(2, 15);
+  
+  function notifyConfigUpdate() {
+    if (onConfigUpdate) {
+      onConfigUpdate(groups);
+    }
+    dispatch('configUpdated', { groups });
   }
   
   // 组别管理函数
   function addCategory() {
-    editingCategory = {
-      id: generateId(),
-      name: '新组别'
-    };
+    editingCategory = dataManager.getDefaultCategoryTemplate();
     isEditingCategory = true;
   }
   
@@ -85,43 +113,48 @@
     isEditingCategory = true;
   }
   
-  function deleteCategory(categoryId: string) {
+  async function deleteCategory(categoryId: string) {
     const categoryGroups = groups.filter(group => group.categoryId === categoryId);
     if (categoryGroups.length > 0) {
-      if (!confirm(`该组别包含 ${categoryGroups.length} 个分组，确定要删除吗？`)) {
+      if (!confirm(`该组别包含 ${categoryGroups.length} 个分组，确定要删除吗？（分组也将被一并删除）`)) {
         return;
       }
+    } else {
+       if (!confirm('确定要删除这个组别吗？')) {
+         return;
+       }
     }
     
-    if (confirm('确定要删除这个组别吗？')) {
-      groups = groups.filter(group => group.categoryId !== categoryId);
-      groupCategories = groupCategories.filter(cat => cat.id !== categoryId);
-      
-      if (activeCategoryId === categoryId && groupCategories.length > 0) {
-        activeCategoryId = groupCategories[0].id;
-      }
-      
-      saveGroups();
+    await dataManager.deleteCategory(categoryId);
+    await loadData(); // 重新加载数据
+    
+    // 如果删除的是当前激活的组别，切换到第一个
+    if (activeCategoryId === categoryId && groupCategories.length > 0) {
+      activeCategoryId = groupCategories[0].id;
+    } else if (groupCategories.length === 0) {
+      activeCategoryId = '';
     }
+    
+    notifyConfigUpdate();
   }
   
-  function saveCategory(category: GroupCategory) {
+  async function saveCategory(category: GroupCategory) {
     if (!category.name.trim()) {
       alert('组别名称不能为空');
       return;
     }
     
-    const index = groupCategories.findIndex(cat => cat.id === category.id);
+    const isNewCategory = !groupCategories.some(c => c.id === category.id);
     
-    if (index >= 0) {
-      groupCategories[index] = { ...category };
-    } else {
-      groupCategories = [...groupCategories, { ...category }];
+    await dataManager.saveCategory(category);
+    await loadData();
+    
+    if (isNewCategory) {
       activeCategoryId = category.id;
     }
     
-    saveGroups();
     cancelEditCategory();
+    notifyConfigUpdate();
   }
   
   function cancelEditCategory() {
@@ -135,15 +168,7 @@
   
   // 分组管理函数
   function addGroup() {
-    editingGroup = {
-      id: generateId(),
-      name: '新分组',
-      sqlQuery: 'SELECT * FROM blocks WHERE',
-      enabled: true,
-      priority: 50,
-      priorityEnabled: true,
-      categoryId: activeCategoryId
-    };
+    editingGroup = dataManager.getDefaultGroupTemplate(activeCategoryId);
     isEditing = true;
   }
   
@@ -152,22 +177,28 @@
     isEditing = true;
   }
   
-  function deleteGroup(index: number) {
+  async function deleteGroup(group: GroupConfig) {
     if (confirm('确定要删除这个分组吗？')) {
-      const categoryGroups = groups.filter(group => group.categoryId === activeCategoryId);
-      groups.splice(groups.indexOf(categoryGroups[index]), 1);
-      saveGroups();
+      await dataManager.deleteGroup(group.id);
+      await loadData();
+      notifyConfigUpdate();
     }
   }
   
-  function toggleGroup(index: number) {
-    const categoryGroups = groups.filter(group => group.categoryId === activeCategoryId);
-    const groupIndex = groups.indexOf(categoryGroups[index]);
-    groups[groupIndex].enabled = !groups[groupIndex].enabled;
-    saveGroups();
+  async function toggleGroup(groupToToggle: GroupConfig) {
+    const groupIndex = groups.findIndex(g => g.id === groupToToggle.id);
+    if (groupIndex === -1) return;
+    
+    const updatedGroup = { ...groups[groupIndex], enabled: !groups[groupIndex].enabled };
+    await dataManager.saveGroup(updatedGroup);
+    
+    // 局部更新UI，避免全量刷新
+    groups[groupIndex] = updatedGroup;
+    groups = [...groups]; // 触发Svelte的响应式更新
+    notifyConfigUpdate();
   }
   
-  function saveGroup(group: GroupConfig) {
+  async function saveGroup(group: GroupConfig) {
     if (!group.sqlQuery.trim()) {
       alert('SQL查询语句不能为空');
       return;
@@ -178,16 +209,10 @@
       return;
     }
     
-    const index = groups.findIndex(g => g.id === group.id);
-    
-    if (index >= 0) {
-      groups[index] = { ...group };
-    } else {
-      groups = [...groups, { ...group }];
-    }
-    
-    saveGroups();
+    await dataManager.saveGroup(group);
+    await loadData();
     cancelEdit();
+    notifyConfigUpdate();
   }
   
   function cancelEdit() {
@@ -195,63 +220,63 @@
     isEditing = false;
   }
   
-  function updateGroupCategory(groupId: string, newCategoryId: string) {
+  async function updateGroupCategory(detail: { groupId: string, newCategoryId: string }) {
+    const { groupId, newCategoryId } = detail;
     const groupIndex = groups.findIndex(g => g.id === groupId);
     if (groupIndex >= 0) {
-      groups[groupIndex].categoryId = newCategoryId;
-      saveGroups();
+      const updatedGroup = { ...groups[groupIndex], categoryId: newCategoryId };
+      await dataManager.saveGroup(updatedGroup);
+      
+      // 局部更新UI
+      groups[groupIndex] = updatedGroup;
+      groups = [...groups];
+      notifyConfigUpdate();
     }
   }
   
-  function moveGroup(index: number, direction: 'up' | 'down') {
+  async function moveGroup(detail: { index: number, direction: 'up' | 'down' }) {
+    const { index, direction } = detail;
     const categoryGroups = groups.filter(group => group.categoryId === activeCategoryId);
+    const globalGroups = [...groups];
+    let changed = false;
     
     if (direction === 'up' && index > 0) {
       const group1 = categoryGroups[index];
       const group2 = categoryGroups[index - 1];
-      const index1 = groups.indexOf(group1);
-      const index2 = groups.indexOf(group2);
-      [groups[index1], groups[index2]] = [groups[index2], groups[index1]];
-      saveGroups();
+      const index1 = globalGroups.findIndex(g => g.id === group1.id);
+      const index2 = globalGroups.findIndex(g => g.id === group2.id);
+      if (index1 !== -1 && index2 !== -1) {
+        [globalGroups[index1], globalGroups[index2]] = [globalGroups[index2], globalGroups[index1]];
+        changed = true;
+      }
     } else if (direction === 'down' && index < categoryGroups.length - 1) {
       const group1 = categoryGroups[index];
       const group2 = categoryGroups[index + 1];
-      const index1 = groups.indexOf(group1);
-      const index2 = groups.indexOf(group2);
-      [groups[index1], groups[index2]] = [groups[index2], groups[index1]];
-      saveGroups();
+      const index1 = globalGroups.findIndex(g => g.id === group1.id);
+      const index2 = globalGroups.findIndex(g => g.id === group2.id);
+       if (index1 !== -1 && index2 !== -1) {
+        [globalGroups[index1], globalGroups[index2]] = [globalGroups[index2], globalGroups[index1]];
+        changed = true;
+      }
+    }
+
+    if(changed) {
+      groups = globalGroups;
+      await dataManager.updateGroups(groups);
+      notifyConfigUpdate();
     }
   }
   
-  async function saveGroups() {
-    try {
-      const currentData = await plugin.loadData('menu-config');
-      const updatedData = {
-        ...currentData,
-        groups: groups,
-        groupCategories: groupCategories,
-        postponeDays: postponeDays,
-        scanInterval: scanInterval,
-        priorityScanEnabled: priorityScanEnabled
-      };
-      
-      await plugin.saveData('menu-config', updatedData);
-      
-      if (onConfigUpdate) {
-        onConfigUpdate(groups);
-      }
-      
-      dispatch('configUpdated', { groups });
-      
-      console.log('分组配置已保存');
-    } catch (error) {
-      console.error('保存分组配置失败:', error);
-      alert('保存失败，请检查控制台');
-    }
-  }
-
-  function saveGlobalConfig() {
-    saveGroups();
+  async function saveGlobalConfig() {
+    await dataManager.updateGlobalSettings({
+      postponeDays,
+      postponeEnabled,
+      scanInterval,
+      priorityScanEnabled,
+      priorityScanInterval,
+      cacheUpdateInterval
+    });
+    alert('全局配置已保存');
   }
 </script>
 
@@ -260,17 +285,17 @@
     {#if isEditing}
       <!-- 编辑分组表单 -->
       <GroupEditForm
-        {editingGroup}
+        editingGroup={editingGroup}
         {plugin}
-        onSave={saveGroup}
-        onCancel={cancelEdit}
+        on:save={e => saveGroup(e.detail)}
+        on:cancel={cancelEdit}
       />
     {:else if isEditingCategory}
       <!-- 编辑组别表单 -->
       <CategoryEditForm
-        {editingCategory}
-        onSave={saveCategory}
-        onCancel={cancelEditCategory}
+        editingCategory={editingCategory}
+        on:save={e => saveCategory(e.detail)}
+        on:cancel={cancelEditCategory}
       />
     {:else}
       <!-- 选项卡布局 -->
@@ -298,10 +323,12 @@
           {#if activeTab === 'global'}
             <!-- 全局配置标签页 -->
             <GlobalConfigTab
-              {postponeDays}
-              {scanInterval}
-              {priorityScanEnabled}
-              onSaveGlobalConfig={saveGlobalConfig}
+              bind:postponeDays
+              bind:postponeEnabled
+              bind:priorityScanEnabled
+              bind:priorityScanInterval
+              bind:cacheUpdateInterval
+              on:saveGlobalConfig={saveGlobalConfig}
             />
           {:else}
             <!-- SQL分组配置标签页 -->
@@ -309,16 +336,16 @@
               {groupCategories}
               {groups}
               {activeCategoryId}
-              onAddCategory={addCategory}
-              onEditCategory={editCategory}
-              onDeleteCategory={deleteCategory}
-              onSwitchCategory={switchCategory}
-              onAddGroup={addGroup}
-              onEditGroup={editGroup}
-              onDeleteGroup={deleteGroup}
-              onToggleGroup={toggleGroup}
-              onMoveGroup={moveGroup}
-              onUpdateGroupCategory={updateGroupCategory}
+              on:addCategory={addCategory}
+              on:editCategory={e => editCategory(e.detail)}
+              on:deleteCategory={e => deleteCategory(e.detail)}
+              on:switchCategory={e => switchCategory(e.detail)}
+              on:addGroup={addGroup}
+              on:editGroup={e => editGroup(e.detail)}
+              on:deleteGroup={e => deleteGroup(e.detail)}
+              on:toggleGroup={e => toggleGroup(e.detail)}
+              on:moveGroup={e => moveGroup(e.detail)}
+              on:updateGroupCategory={e => updateGroupCategory(e.detail)}
             />
           {/if}
         </div>

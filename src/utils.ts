@@ -178,6 +178,67 @@ export function openSQLFlow(sql: string, title: string = "SQL查询") {
   window.open(url);
 }
 
+// 在 utils.ts 中添加分页查询工具函数
+export async function paginatedSQLQuery(
+  baseSQL: string,
+  pageSize: number = 100,
+  maxPages: number = 10
+): Promise<any[]> {
+  let allResults: any[] = [];
+  let page = 0;
+
+  //console.log(`开始分页查询，每页${pageSize}条，最多${maxPages}页`);
+
+  while (page < maxPages) {
+    const offset = page * pageSize;
+
+    // 构建分页SQL - 处理原始SQL是否已有LIMIT的情况
+    let paginatedSQL = baseSQL;
+    if (baseSQL.toLowerCase().includes("limit")) {
+      // 如果原SQL已有LIMIT，替换为分页LIMIT
+      paginatedSQL = baseSQL.replace(
+        /limit\s+\d+/i,
+        `LIMIT ${pageSize} OFFSET ${offset}`
+      );
+    } else {
+      paginatedSQL = `${baseSQL} LIMIT ${pageSize} OFFSET ${offset}`;
+    }
+
+    try {
+      //console.log(`查询第${page + 1}页, OFFSET: ${offset}`);
+
+      const result = await fetchSyncPost("/api/query/sql", {
+        stmt: paginatedSQL,
+      });
+
+      if (!result.data || result.data.length === 0) {
+        //console.log(`第${page + 1}页无数据，查询结束`);
+        break;
+      }
+
+      allResults = allResults.concat(result.data);
+      //console.log(`第${page + 1}页获取到${result.data.length}条数据`);
+
+      // 如果返回数量小于pageSize，说明已经是最后一页
+      if (result.data.length < pageSize) {
+        //console.log(`最后一页数据不足${pageSize}条，查询结束`);
+        break;
+      }
+
+      // 添加延迟避免资源竞争
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      page++;
+    } catch (error) {
+      console.error(`分页查询第${page + 1}页失败:`, error);
+      // 当前页失败时继续尝试下一页
+      page++;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  //console.log(`分页查询完成，总共获取${allResults.length}条闪卡数据`);
+  return allResults;
+}
 // ============== 4. Card Review Interface ==============
 
 /**
@@ -261,36 +322,109 @@ export async function recursiveFindCardBlocks(
   maxDepth: number = 5
 ): Promise<string[]> {
   const foundBlocks = new Set<string>();
-  const findRecursive = async (
-    blockIds: string[],
-    depth = 0
-  ): Promise<void> => {
-    if (depth >= maxDepth || blockIds.length === 0) return;
+  const batchSize = 30; // 新增批次大小参数
 
-    const attributeResults = await Promise.all(
-      blockIds.map((blockId) => checkBlockHasCardAttribute(blockId))
+  /*console.log(
+    `开始递归查找，初始块数: ${startingBlocks.length}, 批次大小: ${batchSize}, 最大深度: ${maxDepth}`
+  );*/
+
+  const processBatch = async (
+    blockIds: string[],
+    depth: number
+  ): Promise<void> => {
+    if (depth >= maxDepth || blockIds.length === 0) {
+      console.log(`递归深度 ${depth} 达到限制或无可处理块，停止递归`);
+      return;
+    }
+
+    //console.log(`深度 ${depth} 处理 ${blockIds.length} 个块`);
+
+    // 分批处理属性检查
+    for (let i = 0; i < blockIds.length; i += batchSize) {
+      const batch = blockIds.slice(i, i + batchSize);
+      /*console.log(
+        `处理批次 ${Math.floor(i / batchSize) + 1}, 大小: ${batch.length}`
+      );*/
+
+      try {
+        const attributeResults = await Promise.all(
+          batch.map((blockId) => checkBlockHasCardAttribute(blockId))
+        );
+
+        const foundInBatch = attributeResults
+          .filter(({ hasAttribute }) => hasAttribute)
+          .map(({ blockId }) => blockId);
+
+        foundInBatch.forEach((blockId) => foundBlocks.add(blockId));
+
+        /*console.log(
+          `批次 ${Math.floor(i / batchSize) + 1} 发现 ${
+            foundInBatch.length
+          } 个闪卡块`
+        );*/
+
+        // 添加请求延迟避免资源竞争
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`批次 ${Math.floor(i / batchSize) + 1} 处理失败:`, error);
+      }
+    }
+
+    // 继续处理没有属性的块
+    const blocksToContinue = blockIds.filter(
+      (blockId) => !foundBlocks.has(blockId)
     );
 
-    attributeResults
-      .filter(({ hasAttribute }) => hasAttribute)
-      .forEach(({ blockId }) => foundBlocks.add(blockId));
-
-    const blocksToContinue = attributeResults
-      .filter(({ hasAttribute }) => !hasAttribute)
-      .map(({ blockId }) => blockId);
+    /*console.log(
+      `深度 ${depth} 有 ${blocksToContinue.length} 个块需要继续向上查找`
+    );*/
 
     if (blocksToContinue.length === 0) return;
 
-    const parentIds = await getParentBlocks(blocksToContinue);
-    const validParentIds = parentIds.filter((id) => id);
-    if (validParentIds.length > 0) {
-      await findRecursive(validParentIds, depth + 1);
+    // 分批获取父块
+    const parentIds: string[] = [];
+    for (let i = 0; i < blocksToContinue.length; i += batchSize) {
+      const batch = blocksToContinue.slice(i, i + batchSize);
+      /*console.log(
+        `获取父块批次 ${Math.floor(i / batchSize) + 1}, 大小: ${batch.length}`
+      );*/
+
+      try {
+        const batchParentIds = await getParentBlocks(batch);
+        const validParentIds = batchParentIds.filter((id) => id);
+        parentIds.push(...validParentIds);
+
+        /*console.log(
+          `批次 ${Math.floor(i / batchSize) + 1} 获取到 ${
+            validParentIds.length
+          } 个有效父块`
+        );*/
+
+        // 添加请求延迟避免资源竞争
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(
+          `获取父块批次 ${Math.floor(i / batchSize) + 1} 失败:`,
+          error
+        );
+      }
+    }
+
+    // 去重父块ID
+    const uniqueParentIds = [...new Set(parentIds)];
+    //console.log(`去重后得到 ${uniqueParentIds.length} 个唯一父块`);
+
+    if (uniqueParentIds.length > 0) {
+      await processBatch(uniqueParentIds, depth + 1);
     }
   };
 
   const startingBlockIds = startingBlocks.map((block) => block.id);
-  await findRecursive(startingBlockIds);
-  return Array.from(foundBlocks);
+  await processBatch(startingBlockIds, 0);
+
+  const result = Array.from(foundBlocks);
+  console.log(`递归查找完成，总共发现 ${result.length} 个闪卡块`);
+  return result;
 }
 
 // ============== 3. Data Helpers ==============

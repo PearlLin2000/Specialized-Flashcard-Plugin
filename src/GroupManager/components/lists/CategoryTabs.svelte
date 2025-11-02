@@ -1,21 +1,20 @@
 <script lang="ts">
-  import type { CategoryTabsProps } from '../../types/index.js';
+  import type { GroupCategory } from '../types/data';
+  import { createEventDispatcher } from 'svelte';
   
-  export let categories: CategoryTabsProps['categories'] = []; // 🟢 添加默认值
-  export let activeCategoryId: CategoryTabsProps['activeCategoryId'] = '';
-  export let groupCounts: CategoryTabsProps['groupCounts'] = {};
-  export let onSwitchCategory: CategoryTabsProps['onSwitchCategory'];
-  export let onEditCategory: CategoryTabsProps['onEditCategory'];
-  export let onDeleteCategory: CategoryTabsProps['onDeleteCategory'];
-  export let onAddCategory: CategoryTabsProps['onAddCategory'];
+  export let categories: GroupCategory[] = []; // 使用统一的 GroupCategory 类型
+  export let activeCategoryId: string = '';
+  export let groupCounts: { [categoryId: string]: number } = {};
+
+  const dispatch = createEventDispatcher();
 </script>
 
 <div class="category-tabs">
-  {#each categories as category} <!-- 🟢 现在 categories 确保是数组 -->
+  {#each categories as category}
     <div 
       class="category-tab {activeCategoryId === category.id ? 'active' : ''}"
-      on:click={() => onSwitchCategory(category.id)}
-      on:dblclick={() => onEditCategory(category)}
+      on:click={() => dispatch('switchCategory', category.id)}
+      on:dblclick={() => dispatch('editCategory', category)}
     >
       <span class="category-name">{category.name}</span>
       <span class="category-count">
@@ -24,20 +23,19 @@
       {#if categories.length > 1}
         <button 
           class="category-delete-btn"
-          on:click|stopPropagation={() => onDeleteCategory(category.id)}
+          on:click|stopPropagation={() => dispatch('deleteCategory', category.id)}
         >
           ×
         </button>
       {/if}
     </div>
   {/each}
-  <button class="add-category-btn" on:click={onAddCategory}>
+  <button class="add-category-btn" on:click={() => dispatch('addCategory')}>
     +
   </button>
 </div>
 
 <style>
-  /* 样式保持不变 */
   .category-tabs {
     display: flex;
     gap: 8px;

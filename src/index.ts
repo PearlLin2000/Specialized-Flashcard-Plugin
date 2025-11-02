@@ -6,84 +6,41 @@ import {
   Menu,
   openTab,
   getFrontend,
-  getBackend,
   fetchSyncPost,
 } from "siyuan";
 import "./index.scss";
 import GroupManager from "./GroupManager/GroupManager.svelte";
-//import GroupManager from "@/GroupManager.svelte";
 
-import { SettingUtils } from "./libs/setting-utils";
-import * as CardUtils from "./utils"; // <--- 新增导入
+import { DataManager } from "./libs/DataManager";
+import * as CardUtils from "./utils";
 
-const STORAGE_NAME = "menu-config";
-
-interface GroupConfig {
-  id: string;
-  name: string;
-  sqlQuery: string;
-  enabled: boolean;
-  priority: number;
-  priorityEnabled: boolean;
-}
-
-interface PluginData {
-  groups: GroupConfig[];
-  cache: {
-    [groupId: string]: {
-      blockIds: string[];
-      timestamp: number;
-    };
-  };
-  postponeDays: number;
-  scanInterval: number;
-  priorityScanEnabled: boolean;
-}
+// 假设 SettingUtils 依然存在且有效
+// import { SettingUtils } from "./libs/setting-utils";
 
 export default class PluginSample extends Plugin {
   private isMobile: boolean;
-  private settingUtils: SettingUtils;
-  private scanTimer: number | null = null;
-
-  private readonly DEFAULT_GROUPS: GroupConfig[] = [
-    {
-      id: "1",
-      name: "最近7天未复习",
-      sqlQuery:
-        "SELECT b.id FROM blocks b JOIN attributes a ON b.id = a.block_id WHERE a.name = 'custom-riff-decks' AND a.value LIKE '%\"due\":\"' || strftime('%Y%m%d', date('now', '-7 day')) || '%' GROUP BY b.id",
-      enabled: true,
-      priority: 1,
-      priorityEnabled: true,
-    },
-    {
-      id: "2",
-      name: "所有闪卡",
-      sqlQuery:
-        "SELECT block_id FROM attributes WHERE name = 'custom-riff-decks'",
-      enabled: true,
-      priority: 5,
-      priorityEnabled: false,
-    },
-  ];
-
-  private readonly DEFAULT_CONFIG = {
-    postponeDays: 0,
-    scanInterval: 30,
-    priorityScanEnabled: false,
-  };
+  // private settingUtils: SettingUtils; // 如果不再使用，可以注释或删除
+  private priorityScanTimer: number | null = null;
+  private cacheUpdateTimer: number | null = null;
+  private dataManager: DataManager;
 
   async onload() {
-    await this.initData();
+    // 初始化数据管理器
+    this.dataManager = new DataManager(this);
+    await this.dataManager.initialize();
 
     const frontEnd = getFrontend();
     this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
 
-    this.settingUtils = new SettingUtils({
-      plugin: this,
-      name: STORAGE_NAME,
-    });
+    // 如果 SettingUtils 不再用于管理 plugin-config.json，可以考虑移除
+    // this.settingUtils = new SettingUtils({
+    //   plugin: this,
+    //   name: "plugin-config.json",
+    // });
 
-    await this.preloadGroupData();
+    // 初始阶段：加载配置和缓存数据，并强制更新一次缓存数据
+    await this.preloadGroupData(true); // true 表示强制更新缓存
+
     this.startScheduledTasks();
   }
 
@@ -120,11 +77,12 @@ export default class PluginSample extends Plugin {
       confirm(
         "⚠️",
         this.i18n.confirmRemove.replace("${name}", this.name),
-        () => {
-          this.removeData(STORAGE_NAME).then(() => {
-            this.data[STORAGE_NAME] = { readonlyText: "Readonly" };
-            showMessage(`[${this.name}]: ${this.i18n.removedData}`);
-          });
+        async () => {
+          // *** MODIFIED ***
+          // 使用 DataManager 的新方法来清理分组和组别数据
+          await this.dataManager.clearAllCache();
+          await this.dataManager.clearGroupsAndCategories();
+          showMessage(`[${this.name}]: ${this.i18n.removedData}`);
         }
       );
     });
@@ -134,12 +92,18 @@ export default class PluginSample extends Plugin {
   }
 
   async onunload() {
+    // 插件关闭时：无需清理数据，只停止定时任务
     this.stopScheduledTasks();
-    this.clearCache();
-    showMessage("回见，专项闪卡插件！");
   }
 
-  uninstall() {}
+  async uninstall() {
+    // 插件卸载时：清理配置和缓存数据
+    await this.dataManager.clearAllCache();
+    // *** MODIFIED ***
+    // 使用 DataManager 的新方法来重置配置中的分组和组别
+    await this.dataManager.clearGroupsAndCategories();
+    showMessage(`[${this.name}]: 插件数据已完全清理`);
+  }
 
   openSetting(): void {
     let dialog = new Dialog({
@@ -148,7 +112,9 @@ export default class PluginSample extends Plugin {
       width: "800px",
       height: "600px",
       destroyCallback: () => {
-        this.preloadGroupData();
+        // 变更配置后：进行一次缓存数据的更新
+        this.preloadGroupData(true); // true 表示强制更新缓存
+        this.restartScheduledTasks(); // 重新启动定时任务（配置可能改变了扫描间隔）
       },
     });
 
@@ -156,54 +122,46 @@ export default class PluginSample extends Plugin {
       target: dialog.element.querySelector("#SettingPanel"),
       props: {
         plugin: this,
-        onConfigUpdate: (groups: GroupConfig[]) => {
-          this.saveGroupsConfig(groups);
+        dataManager: this.dataManager,
+        // *** MODIFIED ***
+        // GroupManager 内部已经通过 dataManager 保存了变更。
+        // 这里只需要在配置变更后触发缓存的强制更新即可。
+        // 不再需要接收 groups 数组，也不再需要调用 updateGroups。
+        onConfigUpdate: async () => {
+          await this.preloadGroupData(true);
         },
       },
     });
   }
 
-  private async initData() {
-    const storedData = await this.loadData(STORAGE_NAME);
-    const data = {
-      ...this.DEFAULT_CONFIG,
-      groups: this.DEFAULT_GROUPS,
-      cache: {},
-      ...(storedData || {}),
-    };
-    this.data[STORAGE_NAME] = data;
+  private getGroupsConfig(): any[] {
+    return this.dataManager.getGroups();
   }
 
-  private getGroupsConfig(): GroupConfig[] {
-    return this.data[STORAGE_NAME]?.groups || this.DEFAULT_GROUPS;
-  }
-
-  private async saveGroupsConfig(groups: GroupConfig[]) {
-    const currentData = this.data[STORAGE_NAME] as PluginData;
-    currentData.groups = groups;
-    this.data[STORAGE_NAME] = currentData;
-    await this.saveData(STORAGE_NAME, currentData);
-  }
-
-  async handleBatchPriority(group: GroupConfig): Promise<void> {
+  async handleBatchPriority(group: any): Promise<void> {
     try {
-      const sqlResult = await fetchSyncPost("/api/query/sql", {
-        stmt: group.sqlQuery,
-      });
+      // 使用分页查询替代直接查询
+      const sqlResult = await CardUtils.paginatedSQLQuery(
+        group.sqlQuery,
+        100,
+        100
+      );
+      console.log(
+        `分组 "${group.name}" 查询完成，获取 ${sqlResult.length} 条原始数据`
+      );
 
-      const blockIds = await CardUtils.recursiveFindCardBlocks(
-        sqlResult.data,
-        5
-      ); // <--- 修改
+      // 使用优化后的递归查找
+      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
+      console.log(
+        `分组 "${group.name}" 递归查找完成，得到 ${blockIds.length} 个闪卡块`
+      );
 
       if (!blockIds || blockIds.length === 0) {
         showMessage(`分组 "${group.name}" 未找到匹配的块`);
         return;
       }
 
-      const cards = await CardUtils.getRiffCardsByBlockIds(blockIds); // <--- 修改
-
-      console.log(cards);
+      const cards = await CardUtils.getRiffCardsByBlockIds(blockIds);
 
       if (cards.length === 0) {
         showMessage(`分组 "${group.name}" 未找到对应的闪卡`);
@@ -231,42 +189,74 @@ export default class PluginSample extends Plugin {
     }
   }
 
-  handleOpenInDocument(group: GroupConfig): void {
+  handleOpenInDocument(group: any): void {
     CardUtils.openSQLFlow(group.sqlQuery, `${group.name}-SQL查询`);
     showMessage(`文档流显示的为原始查询，不包含内置的闪卡过滤`);
   }
 
   private startScheduledTasks() {
     this.stopScheduledTasks();
-    const config = this.data[STORAGE_NAME] as PluginData;
-    const intervalMs = config.scanInterval * 60 * 1000;
-    this.executeScheduledTasks();
-    this.scanTimer = window.setInterval(() => {
-      this.executeScheduledTasks();
-    }, intervalMs);
-  }
 
-  private stopScheduledTasks() {
-    if (this.scanTimer) {
-      clearInterval(this.scanTimer);
-      this.scanTimer = null;
+    const config = this.dataManager.getConfig();
+
+    if (config.priorityScanEnabled) {
+      const priorityIntervalMs = config.priorityScanInterval * 60 * 1000;
+      console.log(`启动优先级扫描任务，间隔${config.priorityScanInterval}分钟`);
+      this.priorityScanTimer = window.setInterval(() => {
+        this.executePriorityScanTasks();
+      }, priorityIntervalMs);
+    }
+
+    const cacheIntervalMs = config.cacheUpdateInterval * 60 * 1000;
+    console.log(`启动缓存更新任务，间隔${config.cacheUpdateInterval}分钟`);
+    this.cacheUpdateTimer = window.setInterval(() => {
+      this.executeCacheUpdateTasks();
+    }, cacheIntervalMs);
+
+    this.executeCacheUpdateTasks();
+
+    if (config.priorityScanEnabled) {
+      this.executePriorityScanTasks();
     }
   }
 
-  private async executeScheduledTasks() {
+  private restartScheduledTasks() {
+    this.stopScheduledTasks();
+    this.startScheduledTasks();
+  }
+
+  private stopScheduledTasks() {
+    if (this.priorityScanTimer) {
+      clearInterval(this.priorityScanTimer);
+      this.priorityScanTimer = null;
+    }
+    if (this.cacheUpdateTimer) {
+      clearInterval(this.cacheUpdateTimer);
+      this.cacheUpdateTimer = null;
+    }
+  }
+
+  private async executePriorityScanTasks() {
     try {
-      await this.preloadGroupData();
       await Promise.allSettled([
         this.postponeTodayCards(),
         this.performPriorityScan(),
       ]);
     } catch (error) {
-      console.error("定时任务执行失败:", error);
+      console.error("优先级扫描任务执行失败:", error);
+    }
+  }
+
+  private async executeCacheUpdateTasks() {
+    try {
+      await this.preloadGroupData(true);
+    } catch (error) {
+      console.error("缓存更新任务执行失败:", error);
     }
   }
 
   private async performPriorityScan(): Promise<void> {
-    const config = this.data[STORAGE_NAME] as PluginData;
+    const config = this.dataManager.getConfig();
     if (!config.priorityScanEnabled) return;
 
     const enabledGroups = this.getGroupsConfig().filter(
@@ -274,65 +264,79 @@ export default class PluginSample extends Plugin {
     );
     if (enabledGroups.length === 0) return;
 
+    console.log(`开始自动优先级扫描，处理${enabledGroups.length}个分组`);
+
     for (const group of enabledGroups) {
       await this.scanGroupPriority(group);
     }
   }
 
-  private async scanGroupPriority(group: GroupConfig): Promise<void> {
-    try {
-      const blockIds = await this.executeAndCacheQuery(group);
-      if (blockIds.length === 0) return;
-
-      const cards = await CardUtils.getRiffCardsByBlockIds(blockIds); // <--- 修改
-      if (cards.length === 0) return;
-
-      const todayCards = CardUtils.filterPureTodayCards(cards); // <--- 修改
-      if (todayCards.length === 0) return;
-
-      await CardUtils.setCardsPriority(todayCards, group.priority); // <--- 修改
-      console.log(
-        `分组 "${group.name}" 成功设置 ${todayCards.length} 张闪卡，优先级为 ${group.priority}`
-      );
-    } catch (error) {
-      console.error(`分组 "${group.name}" 优先级扫描失败:`, error);
-    }
-  }
-
-  private async preloadGroupData(): Promise<void> {
+  private async preloadGroupData(forceUpdate: boolean = false): Promise<void> {
     const groups = this.getGroupsConfig().filter((group) => group.enabled);
     for (const group of groups) {
       try {
-        await this.executeAndCacheQuery(group);
+        await this.executeAndCacheQuery(group, forceUpdate);
       } catch (error) {
         console.error(`预加载分组 "${group.name}" 失败:`, error);
       }
     }
   }
 
-  private async executeAndCacheQuery(group: GroupConfig): Promise<string[]> {
-    const currentData = this.data[STORAGE_NAME] as PluginData;
-    const cachedData = currentData.cache[group.id];
-    if (cachedData && cachedData.blockIds) {
-      return cachedData.blockIds;
+  private async executeAndCacheQuery(
+    group: any,
+    forceUpdate: boolean = false
+  ): Promise<string[]> {
+    const config = this.dataManager.getConfig();
+    const cacheMaxAgeMs = config.cacheUpdateInterval * 60 * 1000;
+
+    if (
+      !forceUpdate &&
+      this.dataManager.isCacheValid(group.id, cacheMaxAgeMs)
+    ) {
+      const cached = this.dataManager.getGroupCache(group.id);
+      if (cached) {
+        console.log(`使用缓存数据 for group: ${group.name}`);
+        return cached.blockIds;
+      }
     }
 
-    const sqlResult = await fetchSyncPost("/api/query/sql", {
-      stmt: group.sqlQuery,
-    });
-    const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult.data, 5); // <--- 修改
+    console.log(`开始执行分组查询: ${group.name}`);
 
-    currentData.cache[group.id] = {
-      blockIds,
-      timestamp: Date.now(),
-    };
-    return blockIds;
+    try {
+      // 使用分页查询替代直接查询
+      const sqlResult = await CardUtils.paginatedSQLQuery(
+        group.sqlQuery,
+        100,
+        100
+      );
+      console.log(
+        `分组 ${group.name} 查询完成，获取 ${sqlResult.length} 条原始数据`
+      );
+
+      // 使用优化后的递归查找
+      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
+      console.log(
+        `分组 ${group.name} 递归查找完成，得到 ${blockIds.length} 个闪卡块`
+      );
+
+      await this.dataManager.updateGroupCache(group.id, blockIds);
+      return blockIds;
+    } catch (error) {
+      console.error(`分组 ${group.name} 查询失败:`, error);
+      // 返回空数组而不是抛出错误，避免影响其他分组
+      return [];
+    }
   }
 
   private addMenu(rect?: DOMRect) {
     const menu = new Menu("card-group-menu");
     const groups = this.getGroupsConfig().filter((group) => group.enabled);
-
+    menu.addItem({
+      icon: "iconSettings",
+      label: "设置",
+      click: () => this.openSetting(),
+    });
+    menu.addSeparator();
     if (groups.length > 0) {
       groups.forEach((group) => {
         menu.addItem({
@@ -341,14 +345,7 @@ export default class PluginSample extends Plugin {
           click: () => this.createRiffCardsByGroup(group.id),
         });
       });
-      menu.addSeparator();
     }
-
-    menu.addItem({
-      icon: "iconSettings",
-      label: "设置",
-      click: () => this.openSetting(),
-    });
 
     if (this.isMobile) {
       menu.fullscreen();
@@ -361,9 +358,6 @@ export default class PluginSample extends Plugin {
     }
   }
 
-  /**
-   * 根据分组ID创建闪卡复习界面
-   */
   private async createRiffCardsByGroup(groupId: string) {
     try {
       const group = this.getGroupsConfig().find((g) => g.id === groupId);
@@ -372,7 +366,7 @@ export default class PluginSample extends Plugin {
         return;
       }
 
-      const blockIds = await this.executeAndCacheQuery(group);
+      const blockIds = await this.executeAndCacheQuery(group, false);
 
       await this.openGroupRiffCards(blockIds, group.name);
     } catch (error) {
@@ -398,9 +392,6 @@ export default class PluginSample extends Plugin {
     }
   }
 
-  /**
-   * 打开闪卡复习界面
-   */
   private openRiffReviewTab(
     title: string,
     cardsData: {
@@ -426,29 +417,97 @@ export default class PluginSample extends Plugin {
     });
   }
 
+  private async scanGroupPriority(group: any): Promise<void> {
+    try {
+      console.log(`=== 开始扫描分组 "${group.name}" ===`);
+
+      // 使用分页查询
+      const sqlResult = await CardUtils.paginatedSQLQuery(
+        group.sqlQuery,
+        100,
+        100 // ← 这里也要设置为 100
+      );
+      console.log(
+        `分组 "${group.name}" 查询完成，获取 ${sqlResult.length} 条原始数据`
+      );
+
+      // 使用优化递归查找
+      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
+      console.log(
+        `分组 "${group.name}" 递归查找完成，得到 ${blockIds.length} 个闪卡块`
+      );
+
+      if (!blockIds || blockIds.length === 0) {
+        console.log(`分组 "${group.name}" 未找到匹配的块`);
+        return;
+      }
+
+      const cards = await CardUtils.getRiffCardsByBlockIds(blockIds);
+      console.log(`获取到闪卡数量: ${cards.length}`);
+
+      const todayCards = CardUtils.filterPureTodayCards(cards);
+      console.log(`今日创建的闪卡数量: ${todayCards.length}`);
+
+      // 调试今日卡片的详细信息
+      todayCards.forEach((card) => {
+        console.log(`今日闪卡:`, {
+          riffCardID: card.riffCardID,
+          blockID: card.blockID,
+          priority: card.priority,
+        });
+      });
+
+      if (todayCards.length === 0) {
+        console.log(`分组 "${group.name}" 没有今日创建的闪卡`);
+        return;
+      }
+
+      const cardsToUpdate = todayCards.filter(
+        (card) => card.priority !== group.priority
+      );
+
+      if (cardsToUpdate.length === 0) {
+        console.log(
+          `分组 "${group.name}" 所有今日闪卡已经是目标优先级 ${group.priority}`
+        );
+        return;
+      }
+
+      await CardUtils.setCardsPriority(cardsToUpdate, group.priority);
+      console.log(
+        `分组 "${group.name}" 成功设置 ${cardsToUpdate.length} 张闪卡，优先级为 ${group.priority}`
+      );
+    } catch (error) {
+      console.error(`分组 "${group.name}" 优先级扫描失败:`, error);
+    }
+  }
+
   private async postponeTodayCards(): Promise<void> {
     try {
-      const config = this.data[STORAGE_NAME] as PluginData;
-      if (config.postponeDays <= 0) return;
+      const config = this.dataManager.getConfig();
+      if (!config.postponeEnabled || config.postponeDays <= 0) return;
 
       const allCards =
         await window.tomato_zZmqus5PtYRi.siyuan.getRiffCardsAllFlat();
-      const todayCards = CardUtils.filterPureTodayCards(allCards); // <--- 修改
+      const todayCards = CardUtils.filterPureTodayCards(allCards);
 
-      const postponableCards = todayCards.filter(
-        (card) => CardUtils.isPostponableCard(card) // <--- 修改
+      const postponableCards = todayCards.filter((card) =>
+        CardUtils.isPostponableCard(card)
       );
 
       if (postponableCards.length > 0) {
-        await CardUtils.postponeCards(postponableCards, config.postponeDays); // <--- 修改
+        await CardUtils.postponeCards(postponableCards, config.postponeDays);
+        console.log(`自动推迟了 ${postponableCards.length} 张今日创建的闪卡`);
       }
     } catch (error) {
       console.error("推迟操作失败:", error);
     }
   }
+}
 
-  private clearCache(): void {
-    const currentData = this.data[STORAGE_NAME] as PluginData;
-    currentData.cache = {};
+// 声明全局变量，避免 TypeScript 报错
+declare global {
+  interface Window {
+    tomato_zZmqus5PtYRi: any;
   }
 }

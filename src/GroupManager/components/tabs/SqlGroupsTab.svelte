@@ -1,29 +1,22 @@
 <script lang="ts">
   import CategoryTabs from '../lists/CategoryTabs.svelte';
   import GroupList from '../lists/GroupList.svelte';
-  import type { GroupConfig, GroupCategory } from '../../types/index.js';
+  import type { GroupConfig, GroupCategory } from '../types/data';
+  import { createEventDispatcher } from 'svelte';
 
-  export let groupCategories: GroupCategory[] = []; // 添加默认值
-  export let groups: GroupConfig[] = []; // 添加默认值
-  export let activeCategoryId: string = ''; // 添加默认值
-  export let onAddCategory: () => void;
-  export let onEditCategory: (category: GroupCategory) => void;
-  export let onDeleteCategory: (categoryId: string) => void;
-  export let onSwitchCategory: (categoryId: string) => void;
-  export let onAddGroup: () => void;
-  export let onEditGroup: (group: GroupConfig) => void;
-  export let onDeleteGroup: (index: number) => void;
-  export let onToggleGroup: (index: number) => void;
-  export let onMoveGroup: (index: number, direction: 'up' | 'down') => void;
-  export let onUpdateGroupCategory: (groupId: string, newCategoryId: string) => void;
+  export let groupCategories: GroupCategory[] = [];
+  export let groups: GroupConfig[] = [];
+  export let activeCategoryId: string = '';
 
-  // 计算每个组别的分组数量 - 添加空值检查
+  const dispatch = createEventDispatcher();
+
+  // 计算每个组别的分组数量
   $: groupCounts = (groupCategories || []).reduce((acc, category) => {
     acc[category.id] = (groups || []).filter(group => group.categoryId === category.id).length;
     return acc;
   }, {} as Record<string, number>);
 
-  // 获取当前激活组别的分组 - 添加空值检查
+  // 获取当前激活组别的分组
   $: currentGroups = (groups || []).filter(group => group.categoryId === activeCategoryId);
 </script>
 
@@ -33,10 +26,10 @@
     categories={groupCategories} 
     {activeCategoryId}
     {groupCounts}
-    onSwitchCategory={onSwitchCategory}
-    onEditCategory={onEditCategory}
-    onDeleteCategory={onDeleteCategory}
-    onAddCategory={onAddCategory}
+    on:switchCategory={e => dispatch('switchCategory', e.detail)}
+    on:editCategory={e => dispatch('editCategory', e.detail)}
+    on:deleteCategory={e => dispatch('deleteCategory', e.detail)}
+    on:addCategory={() => dispatch('addCategory')}
   />
   
   <!-- 分组列表 -->
@@ -44,23 +37,22 @@
     groups={currentGroups}
     categories={groupCategories} 
     {activeCategoryId}
-    onEditGroup={onEditGroup}
-    onDeleteGroup={onDeleteGroup}
-    onToggleGroup={onToggleGroup}
-    onMoveGroup={onMoveGroup}
-    onUpdateGroupCategory={onUpdateGroupCategory}
+    on:editGroup={e => dispatch('editGroup', e.detail)}
+    on:deleteGroup={e => dispatch('deleteGroup', e.detail)}
+    on:toggleGroup={e => dispatch('toggleGroup', e.detail)}
+    on:moveGroup={e => dispatch('moveGroup', e.detail)}
+    on:updateGroupCategory={e => dispatch('updateGroupCategory', e.detail)}
   />
   
   <!-- 添加分组按钮 -->
   <div class="add-group-footer">
-    <button class="add-button-small" on:click={onAddGroup}>
+    <button class="add-button-small" on:click={() => dispatch('addGroup')}>
       添加分组
     </button>
   </div>
 </div>
 
 <style>
-  /* 样式保持不变 */
   .sql-groups {
     height: 100%;
     display: flex;
