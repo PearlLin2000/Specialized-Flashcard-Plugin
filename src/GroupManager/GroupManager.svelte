@@ -1,7 +1,9 @@
+
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
   import SqlGroupsTab from './components/tabs/SqlGroupsTab.svelte';
   import GlobalConfigTab from './components/tabs/GlobalConfigTab.svelte';
+  import InstructionsTab from './components/tabs/InstructionsTab.svelte';
   import GroupEditForm from './components/forms/GroupEditForm.svelte';
   import CategoryEditForm from './components/forms/CategoryEditForm.svelte';
   import type { GroupConfig, GroupCategory } from '../types/data';
@@ -25,30 +27,68 @@
   let priorityScanEnabled: boolean = true;
   let priorityScanInterval: number = 15;
   let cacheUpdateInterval: number = 30;
-  let activeTab: 'global' | 'sql' = 'sql';
+  let activeTab: 'global' | 'sql' | 'instructions' = 'sql';
   let activeCategoryId: string = '';
+
+  // --- START: 新的自动保存逻辑 (防抖) ---
+
+  /**
+   * 防抖函数: 在指定延迟后执行函数，如果在延迟内再次调用，则重置计时器。
+   * @param func 要执行的函数
+   * @param delay 延迟时间 (毫秒)
+   */
+  function debounce(func, delay = 500) {
+    let timeout;
+    return function(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        func.apply(this, args);
+      }, delay);
+    };
+  }
+
+  // 创建一个防抖版的保存函数
+  const debouncedSaveGlobalConfig = debounce(saveGlobalConfig);
+  let isInitialLoad = true; // 标志位，防止组件初次加载时触发保存
+
+  // 响应式语句: 当任何全局配置项变化时，自动调用防抖保存函数
+  $: {
+    if (!isInitialLoad && activeTab === 'global') {
+      // 触发防抖保存，而不是立即保存
+      debouncedSaveGlobalConfig();
+    }
+    // 通过引用这些变量来监听它们的变化
+    (postponeDays, postponeEnabled, priorityScanEnabled, priorityScanInterval, cacheUpdateInterval);
+  }
+
+  // --- END: 新的自动保存逻辑 ---
 
   onMount(async () => {
     await loadData();
     await loadConfig();
+    
+    // 延迟一小段时间再将 isInitialLoad 设置为 false
+    // 以确保初始数据加载不会触发保存逻辑
+    setTimeout(() => {
+        isInitialLoad = false;
+    }, 100);
   });
+  
+  // --- 旧的基于 onDestroy 和标签页切换的保存逻辑已被移除 ---
 
   async function loadData() {
     try {
-      // 使用 dataManager 获取数据
       groupCategories = dataManager.getGroupCategories();
       groups = dataManager.getGroups();
       
       if (groupCategories.length === 0) {
-        // 如果没有类别，创建一个默认类别
         const defaultCategory = dataManager.getDefaultCategoryTemplate();
         await dataManager.saveCategory(defaultCategory);
-        groupCategories = [defaultCategory]; // 更新本地状态
+        groupCategories = [defaultCategory];
       }
       
       activeCategoryId = groupCategories[0]?.id || '';
       
-      // 确保所有分组都有 categoryId
       let groupsUpdated = false;
       const updatedGroups = groups.map(group => {
         if (!group.categoryId) {
@@ -60,11 +100,10 @@
 
       if (groupsUpdated) {
         groups = updatedGroups;
-        await dataManager.updateGroups(groups); // 批量更新一次
+        await dataManager.updateGroups(groups);
       }
     } catch (error) {
       console.error('加载分组配置失败:', error);
-      // 使用 dataManager 的默认模板
       const defaultCategory = dataManager.getDefaultCategoryTemplate();
       await dataManager.saveCategory(defaultCategory);
       groupCategories = [defaultCategory];
@@ -75,7 +114,6 @@
 
   async function loadConfig() {
     try {
-      // 使用 dataManager 获取全局配置
       const globalSettings = dataManager.getGlobalSettings();
       postponeDays = globalSettings.postponeDays;
       postponeEnabled = globalSettings.postponeEnabled;
@@ -85,7 +123,6 @@
       cacheUpdateInterval = globalSettings.cacheUpdateInterval;
     } catch (error) {
       console.error('加载配置失败:', error);
-      // 使用 dataManager 的默认值
       postponeDays = 2;
       postponeEnabled = true;
       scanInterval = 15;
@@ -102,7 +139,6 @@
     dispatch('configUpdated', { groups });
   }
   
-  // 组别管理函数
   function addCategory() {
     editingCategory = dataManager.getDefaultCategoryTemplate();
     isEditingCategory = true;
@@ -126,9 +162,8 @@
     }
     
     await dataManager.deleteCategory(categoryId);
-    await loadData(); // 重新加载数据
+    await loadData();
     
-    // 如果删除的是当前激活的组别，切换到第一个
     if (activeCategoryId === categoryId && groupCategories.length > 0) {
       activeCategoryId = groupCategories[0].id;
     } else if (groupCategories.length === 0) {
@@ -166,7 +201,6 @@
     activeCategoryId = categoryId;
   }
   
-  // 分组管理函数
   function addGroup() {
     editingGroup = dataManager.getDefaultGroupTemplate(activeCategoryId);
     isEditing = true;
@@ -192,9 +226,8 @@
     const updatedGroup = { ...groups[groupIndex], enabled: !groups[groupIndex].enabled };
     await dataManager.saveGroup(updatedGroup);
     
-    // 局部更新UI，避免全量刷新
     groups[groupIndex] = updatedGroup;
-    groups = [...groups]; // 触发Svelte的响应式更新
+    groups = [...groups];
     notifyConfigUpdate();
   }
   
@@ -227,7 +260,6 @@
       const updatedGroup = { ...groups[groupIndex], categoryId: newCategoryId };
       await dataManager.saveGroup(updatedGroup);
       
-      // 局部更新UI
       groups[groupIndex] = updatedGroup;
       groups = [...groups];
       notifyConfigUpdate();
@@ -276,6 +308,9 @@
       priorityScanInterval,
       cacheUpdateInterval
     });
+    // Optional: uncomment to show a message to the user
+    // plugin.showMsg('全局配置已自动保存', 2000);
+    //console.log("Global config auto-saved.");
   }
 </script>
 
@@ -302,6 +337,13 @@
         <!-- 左侧选项卡导航 -->
         <div class="tab-nav">
           <div 
+            class="tab-item {activeTab === 'instructions' ? 'active' : ''}"
+            on:click={() => activeTab = 'instructions'}
+          >
+            <span class="tab-icon">ℹ️</span>
+            <span class="tab-label">重要说明</span>
+          </div>
+          <div 
             class="tab-item {activeTab === 'sql' ? 'active' : ''}"
             on:click={() => activeTab = 'sql'}
           >
@@ -313,13 +355,16 @@
             on:click={() => activeTab = 'global'}
           >
             <span class="tab-icon">🔧</span>
-            <span class="tab-label">全局配置</span>
+            <span class="tab-label">总体配置</span>
           </div>
         </div>
         
         <!-- 右侧内容区域 -->
         <div class="tab-content">
-          {#if activeTab === 'global'}
+          {#if activeTab === 'instructions'}
+            <!-- 重要说明标签页 -->
+            <InstructionsTab />
+          {:else if activeTab === 'global'}
             <!-- 全局配置标签页 -->
             <GlobalConfigTab
               bind:postponeDays
@@ -327,7 +372,6 @@
               bind:priorityScanEnabled
               bind:priorityScanInterval
               bind:cacheUpdateInterval
-              on:saveGlobalConfig={saveGlobalConfig}
             />
           {:else}
             <!-- SQL分组配置标签页 -->

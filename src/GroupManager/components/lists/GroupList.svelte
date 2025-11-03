@@ -4,7 +4,6 @@
   
   export let groups: GroupConfig[] = [];
   export let categories: GroupCategory[] = [];
-  export let activeCategoryId: string = '';
 
   const dispatch = createEventDispatcher();
 
@@ -66,7 +65,7 @@
           class="action-btn-small {group.enabled ? 'enable' : 'disable'}" 
           on:click={() => handleToggle(group)}
         >
-          {group.enabled ? '启用' : '禁用'}
+          {group.enabled ? '已启用' : '已禁用'}
         </button>
       </div>
     </div>
@@ -74,7 +73,7 @@
     <div class="empty-state">
       <span class="empty-text">暂无分组配置</span>
       <div class="empty-hint">
-        点击下方按钮添加新分组
+        点击右下方按钮添加新的SQL分组，或从其他已有分组中移动已有SQL分组。
       </div>
     </div>
   {/each}

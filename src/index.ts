@@ -6,7 +6,7 @@ import {
   Menu,
   openTab,
   getFrontend,
-  //fetchSyncPost,
+  fetchSyncPost,
 } from "siyuan";
 import "./index.scss";
 import GroupManager from "./GroupManager/GroupManager.svelte";
@@ -14,12 +14,8 @@ import GroupManager from "./GroupManager/GroupManager.svelte";
 import { DataManager } from "./libs/DataManager";
 import * as CardUtils from "./utils";
 
-// 假设 SettingUtils 依然存在且有效
-// import { SettingUtils } from "./libs/setting-utils";
-
 export default class PluginSample extends Plugin {
   private isMobile: boolean;
-  // private settingUtils: SettingUtils; // 如果不再使用，可以注释或删除
   private priorityScanTimer: number | null = null;
   private cacheUpdateTimer: number | null = null;
   private dataManager: DataManager;
@@ -32,14 +28,8 @@ export default class PluginSample extends Plugin {
     const frontEnd = getFrontend();
     this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
 
-    // 如果 SettingUtils 不再用于管理 plugin-config.json，可以考虑移除
-    // this.settingUtils = new SettingUtils({
-    //   plugin: this,
-    //   name: "plugin-config.json",
-    // });
-
-    // 初始阶段：加载配置和缓存数据，并强制更新一次缓存数据
-    await this.preloadGroupData(true); // true 表示强制更新缓存
+    // 初始阶段：加载配置和缓存数据，并强制更新一次缓存数据  // true 表示强制更新缓存
+    await this.preloadGroupData(true);
 
     this.startScheduledTasks();
   }
@@ -66,29 +56,6 @@ export default class PluginSample extends Plugin {
         }
       },
     });
-
-    const statusIconTemp = document.createElement("template");
-    statusIconTemp.innerHTML = `<div class="toolbar__item ariaLabel" aria-label="Remove plugin-sample Data">
-    <svg>
-        <use xlink:href="#iconTrashcan"></use>
-    </svg>
-</div>`;
-    statusIconTemp.content.firstElementChild.addEventListener("click", () => {
-      confirm(
-        "⚠️",
-        this.i18n.confirmRemove.replace("${name}", this.name),
-        async () => {
-          // *** MODIFIED ***
-          // 使用 DataManager 的新方法来清理分组和组别数据
-          await this.dataManager.clearAllCache();
-          await this.dataManager.clearGroupsAndCategories();
-          showMessage(`[${this.name}]: ${this.i18n.removedData}`);
-        }
-      );
-    });
-    this.addStatusBar({
-      element: statusIconTemp.content.firstElementChild as HTMLElement,
-    });
   }
 
   async onunload() {
@@ -97,12 +64,7 @@ export default class PluginSample extends Plugin {
   }
 
   async uninstall() {
-    // 插件卸载时：清理配置和缓存数据
-    await this.dataManager.clearAllCache();
-    // *** MODIFIED ***
-    // 使用 DataManager 的新方法来重置配置中的分组和组别
-    await this.dataManager.clearGroupsAndCategories();
-    showMessage(`[${this.name}]: 插件数据已完全清理`);
+    this.removeData("Specialized-Flashcard-Plugin") as any;
   }
 
   openSetting(): void {
@@ -126,7 +88,6 @@ export default class PluginSample extends Plugin {
         // *** MODIFIED ***
         // GroupManager 内部已经通过 dataManager 保存了变更。
         // 这里只需要在配置变更后触发缓存的强制更新即可。
-        // 不再需要接收 groups 数组，也不再需要调用 updateGroups。
         onConfigUpdate: async () => {
           await this.preloadGroupData(true);
         },
@@ -191,7 +152,10 @@ export default class PluginSample extends Plugin {
 
   handleOpenInDocument(group: any): void {
     CardUtils.openSQLFlow(group.sqlQuery, `${group.name}-SQL查询`);
-    showMessage(`文档流显示的为原始查询，不包含内置的闪卡过滤`);
+    showMessage(
+      `请确保文档流插件安装并启用。
+      本次调用的文档流显示的为原始查询，不包含内置的闪卡过滤。`
+    );
   }
 
   private startScheduledTasks(): void {
@@ -220,9 +184,9 @@ export default class PluginSample extends Plugin {
       }
     };
 
-    console.log(
+    /*console.log(
       `启动优先级扫描及设置任务，间隔${config.priorityScanInterval}分钟`
-    );
+    );*/
 
     this.priorityScanTimer = window.setInterval(executeTask, intervalMs);
 
@@ -242,7 +206,7 @@ export default class PluginSample extends Plugin {
       }
     };
 
-    console.log(`启动缓存更新任务，间隔${config.cacheUpdateInterval}分钟`);
+    //console.log(`启动缓存更新任务，间隔${config.cacheUpdateInterval}分钟`);
 
     this.cacheUpdateTimer = window.setInterval(executeTask, intervalMs);
 
@@ -250,7 +214,6 @@ export default class PluginSample extends Plugin {
     executeTask();
   }
 
-  // 建议添加的配套方法
   private stopScheduledTasks(): void {
     if (this.priorityScanTimer) {
       window.clearInterval(this.priorityScanTimer);
@@ -266,17 +229,6 @@ export default class PluginSample extends Plugin {
   private restartScheduledTasks() {
     this.stopScheduledTasks();
     this.startScheduledTasks();
-  }
-
-  private stopScheduledTasks() {
-    if (this.priorityScanTimer) {
-      clearInterval(this.priorityScanTimer);
-      this.priorityScanTimer = null;
-    }
-    if (this.cacheUpdateTimer) {
-      clearInterval(this.cacheUpdateTimer);
-      this.cacheUpdateTimer = null;
-    }
   }
 
   private async executePriorityScanTasks() {
@@ -478,7 +430,7 @@ export default class PluginSample extends Plugin {
       );*/
 
       if (!blockIds || blockIds.length === 0) {
-        console.log(`分组 "${group.name}" 未找到匹配的块`);
+        //console.log(`分组 "${group.name}" 未找到匹配的块`);
         return;
       }
 

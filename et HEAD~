@@ -1,0 +1,145 @@
+* [33maae3b1b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m 修改plugin.json
+[31m|[m * [33m3fa15e7[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m 优化弹窗
+[31m|[m[31m/[m  
+* [33m971447a[m 细节优化
+* [33mfacc434[m[33m ([m[1;33mtag: [m[1;33mv0.2.1[m[33m)[m 细节优化
+* [33m53b9d70[m 新增数据处理相关集成，详见更新记录
+* [33m9ae3cf1[m[33m ([m[1;33mtag: [m[1;33mv0.1.1[m[33m, [m[1;33mtag: [m[1;33mv.0.1.0[m[33m)[m 更新项目文件，见更新记录
+* [33md81b3a7[m 更新README_zh_CN.md
+* [33m301a1da[m[33m ([m[1;33mtag: [m[1;33mv0.4.1[m[33m)[m 提交测试
+* [33m568d4e1[m 增加 "disabledInPublish"
+* [33m3972fc1[m 📝 update readme
+* [33me58da9f[m 🐛 fix some svelte bugs
+*   [33mfc94ff3[m Merge branch 'main' of github.com:siyuan-note/plugin-sample-vite-svelte
+[33m|[m[34m\[m  
+[33m|[m * [33m777f317[m Update plugin.json
+* [34m|[m [33ma975e8b[m ✨ feat: Update this template to the latest official siyuan-plugin template. close #39
+[34m|[m[34m/[m  
+* [33m38b19fd[m 🔧 ci: update vite script, auto remove trivial files under `dist/`
+* [33m591cf2e[m 🔧 ci: 更新 vite 打包脚本
+* [33m4aee720[m 📝 doc: tip
+* [33m19cae2e[m 📝 doc: introduce to siyuan-plugin-cli
+* [33m63ee8d9[m 🔧 ci: tsconfig, include svelte
+* [33m63cc3ac[m 🔧 ci: add a script to update version
+* [33me345e18[m[33m ([m[1;33mtag: [m[1;33mv1.0.0[m[33m)[m 🔨 refactor: 创建 dir 符号链接；并编写 ps 脚本用于获取 windows 管理员权限
+* [33mda4c4ce[m ✨ feat: 更新 Form 组件
+* [33m1ac9cf8[m ✨ feat(api): getFileBlob
+* [33m4c004d7[m 🎨 misc
+* [33mb739c5a[m ⚡️ perf: 优化各个组件
+*   [33m0d0167b[m Merge branch 'main' of github.com:siyuan-note/plugin-sample-vite-svelte
+[35m|[m[36m\[m  
+[35m|[m * [33m46e4845[m Update plugin.json
+* [36m|[m [33m6361001[m 🚚 mv：将libs目录下的组件移至components子目录
+[36m|[m[36m/[m  
+* [33m0597449[m 🔧 ci: update pnpm action
+* [33m504de7d[m 🐛 fix: build 是不生成 sourcemap
+* [33m9e2a64b[m 🔧 ci(vite): 生成 inline source map，方便调试
+* [33m0a8ab5a[m 📝 docs
+* [33m5ff929e[m 📝 doc: another template
+* [33mba57ba3[m ✨ feat: add const.ts
+* [33m6d75a46[m 🔨 refactor: 重构基于 svelte 的设置面板功能
+* [33m49eb063[m 🔨 Remove the default fund in plugin.json
+* [33m9c7572b[m 🐛 getFile API
+* [33m81d5bee[m 📝docs
+* [33m67d6024[m ✨ feat: add kits about dialogs
+* [33m03ab34f[m ⚡ 禁用思源内部的 enter confirm 特性
+* [33m9f54e70[m ✨ misc
+* [33m3d56542[m[33m ([m[1;33mtag: [m[1;33mv0.3.5[m[33m)[m 🎨 feat: Add "custom setting-items" example
+* [33m29c494a[m ✨ feat(setting-utils): getter and setting
+* [33m59daefa[m ⬆️ update siyuan: add `direction` parameter
+* [33m7159755[m 🔨 调整 setting 的 interface 定义
+* [33m4a9d0f3[m 🔥 remove eslint
+* [33m0df9ec2[m ✨ feat(setting-utils): 增加自定义元素功能
+* [33m57cc62f[m 🎨 refactor: setting-utils args
+* [33m56be185[m ✨ misc(setting-utils)
+* [33m8daa01a[m 🐛 fix: 模板提供的 button 的 click 事件不生效; close #31
+*   [33m2c45caf[m Merge pull request #30 from tengfei-xy/main
+[1;31m|[m[1;32m\[m  
+[1;31m|[m * [33m7a46168[m 修改take()的获取值方法
+[1;31m|[m * [33m587d5f2[m 修复刷新页面后,数据已加载,但没有显示到设置页面的问题
+[1;31m|[m * [33m8f27804[m 完善修改
+[1;31m|[m *   [33m0645799[m Merge branch 'siyuan-note:main' into main
+[1;31m|[m [1;33m|[m[1;31m\[m  
+[1;31m|[m [1;33m|[m[1;31m/[m  
+[1;31m|[m[1;31m/[m[1;33m|[m   
+* [1;33m|[m [33m3b47436[m 📝 readme
+* [1;33m|[m   [33m1a1c267[m Merge branch 'upgrade-svelte'
+[1;35m|[m[1;36m\[m [1;33m\[m  
+[1;35m|[m * [1;33m|[m [33madf7d86[m 🔧 config svelte
+[1;35m|[m * [1;33m|[m [33m4286a49[m ⬆️ update svelte deps
+[1;35m|[m[1;35m/[m [1;33m/[m  
+* [1;33m|[m   [33mcd38b61[m Merge pull request #29 from tengfei-xy/main
+[31m|[m[32m\[m [1;33m\[m  
+* [32m|[m [1;33m|[m [33m762ae21[m 🔧 build: yaml-plugin
+* [32m|[m [1;33m|[m   [33m4310b00[m Merge pull request #28 from tengfei-xy/main
+[33m|[m[34m\[m [32m\[m [1;33m\[m  
+* [34m|[m [32m|[m [1;33m|[m [33ma50c61e[m 🔥 rm: en_US.yaml
+* [34m|[m [32m|[m [1;33m|[m [33m91deda2[m 🔧 build: 使用 yaml i18n
+[34m|[m [34m|[m [32m|[m * [33m786cc5e[m 修改getElement()方法和方法说明
+[34m|[m [34m|[m [32m|[m[32m/[m  
+[34m|[m [34m|[m * [33m0e372e9[m 修改textinput和textarea的回调函数
+[34m|[m [34m|[m * [33mf06c820[m 为经典设置窗口添加实时读取和实时保存的能力
+[34m|[m [34m|[m * [33m44d6178[m 添加setAndSave方法作为设置参数并保存
+[34m|[m [34m|[m[34m/[m  
+[34m|[m * [33mf9ea1be[m 为表单提供禁用和启用的方法
+[34m|[m[34m/[m  
+*   [33m6700d61[m Merge pull request #27 from tengfei-xy/main
+[35m|[m[36m\[m  
+[35m|[m * [33mc58c836[m 为checkout添加切换状态时添加回调函数
+[35m|[m[35m/[m  
+* [33mec00075[m ✨ remove save at `onunload`
+* [33m9fcb5bb[m ✨ feat: make install script
+* [33m4a7bd84[m 📝 doc: add developer guide document
+* [33m0ff9fde[m 📝 doc: update readme
+* [33me48a9ab[m[33m ([m[1;33mtag: [m[1;33mv0.3.4[m[33m)[m 🚀 update
+* [33mc33a63a[m 🐛 fix: 2.12.4 block icon incompatible
+* [33m90b2805[m 🐛 fix: vite.config.ts
+* [33m881ff60[m 🚚 move: png back to root
+* [33m65b9505[m :arrow_up: ci: update vite
+* [33m3ad078d[m ⬆️  ci: update vite
+* [33m953d15c[m ✨ feat: Update setting utils
+* [33mbf21514[m 🔨 Add plugin.json back to top
+* [33me6a7277[m 使用public目录替代复制静态资源的配置
+*   [33m6f8ae4d[m Merge branch 'zxkmm-add_hint_type_to_settingUtil_and_fix_official_setting_calling' into dev
+[1;31m|[m[1;32m\[m  
+[1;31m|[m * [33m2ab75b2[m clean up
+[1;31m|[m * [33mf84497f[m add hint type to settingUtil
+* [1;32m|[m [33m1735ec4[m[33m ([m[1;33mtag: [m[1;33mv0.3.2[m[33m)[m 🚀 update to v0.3.2
+[1;32m|[m[1;32m/[m  
+* [33m74d62ac[m[33m ([m[1;33mtag: [m[1;33mv0.3.1[m[33m)[m ✨ feat: add `foldBlock` api
+* [33ma2a615a[m ⬆️ update with siyuan petal
+* [33mc179519[m ✨ feat: Add input number element in setting-utils
+*   [33m50a2286[m Merge pull request #23 from zxkmm/fix_wrong_type_def_to_match_header
+[1;33m|[m[1;34m\[m  
+[1;33m|[m * [33m2a08298[m fix wrong type def in lib to match header
+[1;33m|[m[1;33m/[m  
+* [33m2051a2a[m[33m ([m[1;33mtag: [m[1;33mv0.2.9[m[33m)[m ✅ test: setting panel
+* [33mb0d28e2[m :hammer: refactor(setting): 重构了Svelte设置的模板
+*   [33mf1fcf77[m Merge branch 'main' of github.com:siyuan-note/plugin-sample-vite-svelte
+[1;35m|[m[1;36m\[m  
+[1;35m|[m * [33m7f57c40[m doc: 宣传一下无 svelte 版本的模板
+* [1;36m|[m [33mec8d768[m :construction_worker: ci: 优化 vite 配置
+[1;36m|[m[1;36m/[m  
+*   [33mb31102d[m[33m ([m[1;33mtag: [m[1;33mv0.2.8[m[33m)[m Merge branch 'dev'
+[31m|[m[32m\[m  
+[31m|[m * [33m962f879[m ✨ feat(api): 更新后端API `getIDsByHPath`
+[31m|[m * [33m8e841a4[m ✨ feat(update): 更新插件模板前端部分
+[31m|[m * [33m3de8bc6[m 🐳 chore(update): 更新模板的依赖、文档等部分
+[31m|[m[31m/[m  
+* [33m5f59ffe[m update keywords
+* [33m7d95423[m update
+* [33m3343eb7[m update
+* [33mc580fb7[m update setting utils
+*   [33me2ed032[m[33m ([m[1;33mtag: [m[1;33mv0.2.6[m[33m)[m Merge branch 'dev'
+[33m|[m[34m\[m  
+[33m|[m * [33mbc63535[m fix protyle bug
+[33m|[m * [33m8be20e0[m update typescript
+[33m|[m * [33mc2d3812[m misc
+[33m|[m[33m/[m  
+* [33m05c9f26[m update doc
+* [33m1a0b101[m 优化 setting-utils
+*   [33mb1a061c[m Merge pull request #22 from siyuan-note:setting-utils
+[35m|[m[36m\[m  
+[35m|[m * [33mcdb5085[m setting-utils
+[35m|[m[35m/[m  
+*   [33mdeb0656[m[33m ([m[1;33mtag: [m[1;33mv0.2.3[m[33m)[m 

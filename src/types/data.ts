@@ -84,7 +84,7 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
 export const DEFAULT_CATEGORIES: GroupCategory[] = [
   {
     id: "default",
-    name: "默认组别",
+    name: "默认组别（双击重命名）",
   },
 ];
 

@@ -314,6 +314,15 @@ export class DataManager {
   }
 
   /**
+   * 清除所有分组和类别（用于卸载）
+   */
+  async clearGroupsAndCategories(): Promise<void> {
+    this.config.groups = [];
+    this.config.groupCategories = [];
+    await this.saveConfig();
+  }
+
+  /**
    * 检查缓存是否有效（基于时间戳）
    */
   isCacheValid(groupId: string, maxAgeMs: number = 30 * 60 * 1000): boolean {

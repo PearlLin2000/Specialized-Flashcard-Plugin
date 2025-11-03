@@ -1,8 +1,10 @@
+
 <script lang="ts">
+  //data的导入路径错了，考虑重构项目结构。
   import type { GroupConfig } from '../types/data';
   import { createEventDispatcher } from 'svelte';
-  import HelpTooltip from '../common/HelpTooltip.svelte'; // <!-- 1. 引入新组件
-
+  import HelpTooltip from '../common/HelpTooltip.svelte';
+  
   export let editingGroup: GroupConfig;
   export let plugin: any;
 
@@ -18,11 +20,13 @@
     dispatch('cancel');
   }
 
+  // 在文档流中打开
   function handleOpenInDocument() {
     if (!editingGroup) return;
     plugin.handleOpenInDocument(editingGroup);
   }
-  
+
+  // 批量设置优先级
   async function handleBatchPriority() {
     if (!editingGroup) return;
     
@@ -37,16 +41,17 @@
 
 {#if editingGroup}
   <div class="config-form compact-form">
-    <!-- 第一行：分组名称 + 启用分组 + 在文档流中打开按钮 -->
+    <!-- 第一行：SQL分组名称 + 启用分组 + 在文档流中打开按钮 -->
     <div class="form-row form-row-with-button">
       <div class="form-field form-field-main-input">
-        <label class="field-label">
-          分组名称
+        <label class="field-label" for="group-name-input">
+          SQL分组名称
         </label>
         <input 
+          id="group-name-input"
           class="field-input" 
           bind:value={editingGroup.name}
-          placeholder="输入分组名称"
+          placeholder="输入SQL分组名称"
         />
       </div>
       <div class="form-field compact" style="flex: 0 0 auto;">
@@ -55,28 +60,31 @@
           <span class="toggle-text">启用分组</span>
         </label>
       </div>
-      <!-- 2. 将按钮和提示图标包裹起来 -->
-      <div class="button-with-help">
-        <button class="func-button open-in-document" on:click={handleOpenInDocument}>
-          在文档流中打开（原始）
-        </button>
+      <button class="func-button open-in-document" on:click={handleOpenInDocument}>
+        在文档流中打开（原始）
+      </button>
+
+      <!-- ADDED START -->
+      <div class="form-item-help">
         <HelpTooltip>
-          <b>所见即所得:</b>
-          <ul>
-            <li>基于原始 SQL，不包含闪卡过滤。</li>
-            <li>不进行递归处理。</li>
-          </ul>
+            <strong>请安装文档流插件，并确认启用:</strong>
+            <ul style="margin: 4px 0 0 18px; padding: 0; list-style-type: disc;">
+                <li>所见即所得：基于原始 SQL。</li>
+                <li>不包含闪卡过滤。不进行递归处理。</li>
+            </ul>
         </HelpTooltip>
       </div>
+      <!-- ADDED END -->
     </div>
     
     <!-- 第二行：优先级设置 + 启用优先级扫描 + 批量设置优先级按钮 -->
     <div class="form-row form-row-with-button">
       <div class="form-field form-field-short-input">
-        <label class="field-label">
+        <label class="field-label" for="priority-input">
           🍅优先级
         </label>
         <input 
+          id="priority-input"
           class="field-input"
           type="number"
           bind:value={editingGroup.priority}
@@ -87,30 +95,27 @@
       </div>
       <div class="form-field compact" style="flex: 0 0 auto;">
         <label class="toggle-label small-text">
-          <!-- ❗ 注意: 您原始代码是 priorityEnabled，我保持不变 -->
           <input type="checkbox" bind:checked={editingGroup.priorityEnabled}>
           <span class="toggle-text">启用优先级扫描</span>
         </label>
       </div>
-      <!-- 3. 将按钮和提示图标包裹起来 -->
-      <div class="button-with-help">
         <button class="func-button batch-priority" on:click={handleBatchPriority}>
-          批量设置优先级（所有）
+          批量设置优先级（全部）
         </button>
+            <div class="form-item-help">
         <HelpTooltip>
-          <b>包含闪卡过滤:</b>
-          <ul>
-            <li>包含到期和未到期的闪卡。</li>
-            <li>包含了递归处理。</li>
-          </ul>
+            <strong>请安装番茄工具箱插件，并确认启用:</strong>
+            <ul style="margin: 4px 0 0 18px; padding: 0; list-style-type: disc;">
+                <li>包含闪卡过滤，包含内置递归处理。</li>
+                <li>包含到期闪卡和未到期闪卡。</li>
+            </ul>
         </HelpTooltip>
       </div>
     </div>
-    
+
     <!-- SQL查询语句 -->
     <div class="form-field full-width">
       <div class="field-header">
-        <!-- ❗ 注意: 您原始代码是 sqlQuery，我保持不变 -->
         <span class="field-label">SQL查询语句</span>
       </div>
       <textarea 
@@ -119,7 +124,7 @@
         placeholder="输入SQL查询语句，例如：SELECT * FROM blocks WHERE tag LIKE '%#标签#%'"
       ></textarea>
       <div class="field-hint">
-        提示：查询结果应为blocks表的数据
+        提示：查询结果应为blocks表的数据，使用SELECT * FROM blocks起始。
       </div>
     </div>
     
@@ -136,7 +141,6 @@
 {/if}
 
 <style>
-  /* --- 您的所有原始样式保持不变 --- */
   .config-form {
     display: flex;
     flex-direction: column;
@@ -161,6 +165,13 @@
     align-items: flex-end;
     gap: 12px;
   }
+
+  /* ADDED START */
+  .form-item-help {
+    margin-left: -4px; /* 自定义与按钮的距离 */
+    margin-bottom: 3px;/* 微调垂直对齐 */
+  }
+  /* ADDED END */
 
   .toggle-label.small-text .toggle-text {
     font-size: 13px;
@@ -315,21 +326,5 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 13px;
-  }
-
-  /* --- 4. 添加用于集成的最小化样式 --- */
-  .button-with-help {
-    display: flex;
-    align-items: center; /* 确保按钮和?图标垂直对齐 */
-    gap: 4px; /* 按钮和图标之间的间距 */
-  }
-
-  /* 可选：美化提示框内的列表样式 */
-  :global(.tooltip-content ul) {
-    padding-left: 18px;
-    margin: 4px 0 0;
-  }
-  :global(.tooltip-content li) {
-    margin-bottom: 4px;
   }
 </style>

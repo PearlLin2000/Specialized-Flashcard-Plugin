@@ -31,7 +31,6 @@
   <!-- 类别标签页 -->
   <CategoryTabs
     categories={groupCategories}
-    {activeCategoryId}
     {groupCounts}
     on:addCategory={() => dispatch('addCategory')}
     on:editCategory={e => dispatch('editCategory', e.detail)}
@@ -70,7 +69,7 @@
   .tab-actions {
     margin-top: 16px;
     display: flex;
-    justify-content: center;
+    justify-content: right;
   }
 
   .add-group-btn {
