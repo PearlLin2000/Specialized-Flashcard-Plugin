@@ -66,7 +66,7 @@
           class="action-btn-small {group.enabled ? 'enable' : 'disable'}" 
           on:click={() => handleToggle(group)}
         >
-          {group.enabled ? '启用' : '禁用'}
+          {group.enabled ? '已启用' : '已禁用'}
         </button>
       </div>
     </div>
