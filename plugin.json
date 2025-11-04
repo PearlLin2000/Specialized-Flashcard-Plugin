@@ -2,7 +2,7 @@
   "name": "Specialized-Flashcard-Plugin",
   "author": "PearlLin",
   "url": "https://github.com/PearlLin2000/Specialized-Flashcard-Plugin",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "minAppVersion": "3.3.0",
   "disabledInPublish": true,
   "backends": ["all"],

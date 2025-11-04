@@ -64,7 +64,8 @@ export default class PluginSample extends Plugin {
   }
 
   async uninstall() {
-    this.removeData("Specialized-Flashcard-Plugin") as any;
+    this.removeData("plugin-config.json");
+    this.removeData("cache-data.json");
   }
 
   openSetting(): void {
