@@ -70,7 +70,7 @@
   .tab-actions {
     margin-top: 16px;
     display: flex;
-    justify-content: center;
+    justify-content: right;
   }
 
   .add-group-btn {

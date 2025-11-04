@@ -1,104 +1,40 @@
 <script lang="ts">
-  import type { GroupConfig } from '../types/data';
+  import type { GroupCategory } from '../types/data';
   import { createEventDispatcher } from 'svelte';
-  
-  export let editingGroup: GroupConfig;
-  export let plugin: any;
+
+  export let editingCategory: GroupCategory;  // 注意：这里是 editingCategory 不是 editingGroup
+  // 不需要 plugin 属性，因为类别编辑不需要插件功能
 
   const dispatch = createEventDispatcher();
 
   function handleSave() {
-    if (editingGroup) {
-      dispatch('save', editingGroup);
+    if (editingCategory && editingCategory.name.trim()) {
+      dispatch('save', editingCategory);
+    } else {
+      alert('组别名称不能为空');
     }
   }
 
   function handleCancel() {
     dispatch('cancel');
   }
-
-  // 在文档流中打开
-  function handleOpenInDocument() {
-    if (!editingGroup) return;
-    plugin.handleOpenInDocument(editingGroup);
-  }
-
-  // 批量设置优先级
-  async function handleBatchPriority() {
-    if (!editingGroup) return;
-    
-    try {
-      await plugin.handleBatchPriority(editingGroup);
-    } catch (error) {
-      console.error('批量设置优先级失败:', error);
-      alert('批量设置优先级失败，请检查控制台');
-    }
-  }
 </script>
 
-{#if editingGroup}
+{#if editingCategory}
   <div class="config-form compact-form">
-    <!-- 第一行：分组名称 + 启用分组 + 在文档流中打开按钮 -->
-    <div class="form-row form-row-with-button">
-      <div class="form-field form-field-main-input">
-        <label class="field-label">
-          分组名称
-        </label>
-        <input 
-          class="field-input" 
-          bind:value={editingGroup.name}
-          placeholder="输入分组名称"
-        />
-      </div>
-      <div class="form-field compact" style="flex: 0 0 auto;">
-        <label class="toggle-label small-text">
-          <input type="checkbox" bind:checked={editingGroup.enabled}>
-          <span class="toggle-text">启用分组</span>
-        </label>
-      </div>
-      <button class="func-button open-in-document" on:click={handleOpenInDocument}>
-        在文档流中打开
-      </button>
-    </div>
-    
-    <!-- 第二行：优先级设置 + 启用优先级扫描 + 批量设置优先级按钮 -->
-    <div class="form-row form-row-with-button">
-      <div class="form-field form-field-short-input">
-        <label class="field-label">
-          🍅优先级
-        </label>
-        <input 
-          class="field-input"
-          type="number"
-          bind:value={editingGroup.priority}
-          placeholder="优先级 (默认50)"
-          min="0"
-          max="100"
-        />
-      </div>
-      <div class="form-field compact" style="flex: 0 0 auto;">
-        <label class="toggle-label small-text">
-          <input type="checkbox" bind:checked={editingGroup.priorityEnabled}>
-          <span class="toggle-text">启用优先级扫描</span>
-        </label>
-      </div>
-      <button class="func-button batch-priority" on:click={handleBatchPriority}>
-        批量设置优先级
-      </button>
-    </div>
-    
-    <!-- SQL查询语句 -->
+    <!-- 类别名称 -->
     <div class="form-field full-width">
-      <div class="field-header">
-        <span class="field-label">SQL查询语句</span>
-      </div>
-      <textarea 
-        class="sql-textarea" 
-        bind:value={editingGroup.sqlQuery}
-        placeholder="输入SQL查询语句，例如：SELECT * FROM blocks WHERE tag LIKE '%#标签#%'"
-      ></textarea>
+      <label class="field-label" for="category-name-input">
+        组别名称
+      </label>
+      <input 
+        id="category-name-input"
+        class="field-input" 
+        bind:value={editingCategory.name}
+        placeholder="输入组别名称"
+      />
       <div class="field-hint">
-        提示：查询结果应为blocks表的数据
+        提示：组别用于分类管理不同的SQL分组
       </div>
     </div>
     
@@ -128,56 +64,15 @@
     gap: 12px;
   }
   
-  .form-row {
-    display: flex;
-    gap: 20px;
-    align-items: flex-end;
-  }
-  
-  .form-row-with-button {
-    display: flex;
-    align-items: flex-end;
-    gap: 12px;
-  }
-
-  .toggle-label.small-text .toggle-text {
-    font-size: 13px;
-    color: var(--b3-theme-on-surface-light);
-  }
-  
   .form-field {
     display: flex;
     flex-direction: column;
-    margin-bottom: 0;
-  }
-  
-  .form-field-main-input {
-    flex: 1 1 auto;
-    min-width: 150px;
-    max-width: 200px;
-  }
-
-  .form-field-short-input {
-    flex: 0 0 200px;
-  }
-
-  .form-field.compact {
-    flex: 1;
-    margin-bottom: 0;
   }
   
   .form-field.full-width {
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin-top: 8px;
-  }
-  
-  .field-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
   }
   
   .field-label {
@@ -185,7 +80,6 @@
     margin-bottom: 4px;
     color: var(--b3-theme-on-background);
     font-size: 14px;
-    white-space: nowrap;
   }
   
   .field-input {
@@ -198,73 +92,10 @@
     width: 100%;
   }
   
-  .sql-textarea {
-    flex: 1;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 14px;
-    line-height: 1.4;
-    resize: vertical;
-    background: var(--b3-theme-surface);
-    color: var(--b3-theme-on-surface);
-    min-height: 120px;
-    width: 100%;
-  }
-  
-  .toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    margin-bottom: 4px;
-  }
-  
-  .toggle-text {
-    font-size: 14px;
-    color: var(--b3-theme-on-surface);
-  }
-  
   .field-hint {
     font-size: 12px;
     color: var(--b3-theme-on-surface-light);
     margin-top: 4px;
-  }
-  
-  .func-button {
-    padding: 8px 12px;
-    font-size: 13px;
-    border: 1px solid var(--b3-theme-surface-light);
-    border-radius: 4px;
-    cursor: pointer;
-    background: var(--b3-theme-surface);
-    color: var(--b3-theme-on-surface);
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-  
-  .func-button.batch-priority {
-    background: var(--b3-theme-primary-light);
-    border-color: var(--b3-theme-primary);
-    color: var(--b3-theme-primary);
-  }
-  
-  .func-button.batch-priority:hover {
-    background: var(--b3-theme-primary);
-    color: white;
-  }
-  
-  .func-button.open-in-document {
-    background: var(--b3-theme-secondary-light);
-    border-color: var(--b3-theme-secondary);
-    color: var(--b3-theme-secondary);
-  }
-  
-  .func-button.open-in-document:hover {
-    background: var(--b3-theme-secondary);
-    color: white;
   }
   
   .form-actions {

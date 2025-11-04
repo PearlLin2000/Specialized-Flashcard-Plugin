@@ -2,7 +2,7 @@
   "name": "Specialized-Flashcard-Plugin",
   "author": "PearlLin",
   "url": "https://github.com/PearlLin2000/Specialized-Flashcard-Plugin",
-  "version": "0.1.1",
+  "version": "0.2.3",
   "minAppVersion": "3.3.0",
   "disabledInPublish": true,
   "backends": ["windows"],
@@ -13,7 +13,7 @@
   },
   "description": {
     "en_US": "Click the menu to switch and select special flashcard review (SQL retrieval)",
-    "zh_CN": "点击菜单，切换选择专项闪卡复习（sql检索）"
+    "zh_CN": "基于sql检索，实现专项闪卡的复习、查看和批量优先级设置（可分组）"
   },
   "readme": {
     "en_US": "README.md",

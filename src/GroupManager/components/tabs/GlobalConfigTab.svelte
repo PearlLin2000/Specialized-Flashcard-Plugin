@@ -1,17 +1,9 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
-
   export let postponeDays: number;
   export let postponeEnabled: boolean;
   export let priorityScanEnabled: boolean;
   export let priorityScanInterval: number;
   export let cacheUpdateInterval: number;
-  
-  const dispatch = createEventDispatcher();
-
-  function handleSave() {
-    dispatch('saveGlobalConfig');
-  }
 </script>
 
 <div class="global-config">
@@ -19,7 +11,7 @@
   <!-- 区块1: 自动推迟配置 -->
   <div class="config-section">
     <div class="section-description">
-      自动推迟今日创建的闪卡
+      自动推迟今日创建的闪卡（以避免过多新卡片干扰复习）
     </div>
     
     <div class="form-field">
@@ -28,10 +20,15 @@
         <span class="toggle-text">启用自动推迟</span>
       </label>
     </div>
+
+    <div class="section-description">
+      推迟天数（0-30天，0为不启用）
+    </div>
     
     <div class="form-field">
-      <label class="field-label">自动推迟天数</label>
+      <label class="field-label" for="postpone-days-input">自动推迟天数</label>
       <input 
+        id="postpone-days-input"
         class="field-input"
         type="number" 
         bind:value={postponeDays}
@@ -40,16 +37,13 @@
         max="30"
         disabled={!postponeEnabled}
       />
-      <div class="field-hint">
-        今日创建的闪卡自动推迟的天数
-      </div>
     </div>
   </div>
   
   <!-- 区块2: 自动优先级配置 -->
   <div class="config-section">
     <div class="section-description">
-      为【今日创建】、【位于指定分组】的闪卡自动设置【指定】优先级
+      为【今日创建】、【位于指定分组】的闪卡自动设置【指定】优先级。
     </div>
     
     <div class="form-field">
@@ -58,10 +52,15 @@
         <span class="toggle-text">启用自动优先级扫描</span>
       </label>
     </div>
+
+    <div class="section-description">
+      后台扫描间隔时长（可配置范围：5-120分钟）。
+    </div>
     
     <div class="form-field">
-      <label class="field-label">优先级扫描间隔(分钟)</label>
+      <label class="field-label" for="priority-scan-interval-input">优先级扫描间隔(分钟)</label>
       <input 
+        id="priority-scan-interval-input"
         class="field-input"
         type="number" 
         bind:value={priorityScanInterval}
@@ -70,23 +69,23 @@
         max="120"
         disabled={!priorityScanEnabled}
       />
-      <div class="field-hint">
-        自动为今日创建的闪卡设置分组优先级的时间间隔
-      </div>
     </div>
   </div>
   
   <!-- 区块3: SQL缓存配置 -->
   <div class="config-section">
     <div class="section-description-group">
-      <div class="description-line">SQL所查询的缓存数据保存时间。</div>
-      <div class="description-line">越短，则打开闪卡分组界面所显示的闪卡越"新"，也越可能影响思源的使用。</div>
+      <div class="description-line">
+        SQL所查询的缓存数据保存时间（可配置5-240分钟）。
+        越短，则打开闪卡分组界面所显示的闪卡越“新”，但也越可能影响思源的使用性能。
+      </div>
       <div class="description-line">一言以蔽之：没想法，用默认的30分钟。觉得思源卡，把这个数字调大；觉得该有的卡片没出现，把这个数字调小。</div>
     </div>
     
     <div class="form-field">
-      <label class="field-label">SQL缓存更新间隔(分钟)</label>
+      <label class="field-label" for="cache-update-interval-input">SQL缓存更新间隔(分钟)</label>
       <input 
+        id="cache-update-interval-input"
         class="field-input"
         type="number" 
         bind:value={cacheUpdateInterval}
@@ -94,17 +93,9 @@
         min="5"
         max="240"
       />
-      <div class="field-hint">
-        自动更新SQL查询缓存的时间间隔
-      </div>
     </div>
   </div>
   
-  <div class="form-actions">
-    <button class="save-button" on:click={handleSave}>
-      保存全局配置
-    </button>
-  </div>
 </div>
 
 <style>
@@ -192,30 +183,4 @@
     color: var(--b3-theme-on-surface);
   }
   
-  .field-hint {
-    font-size: 12px;
-    color: var(--b3-theme-on-surface-light);
-    margin-top: 4px;
-  }
-  
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: auto;
-  }
-  
-  .save-button {
-    padding: 8px 16px;
-    background: var(--b3-theme-primary);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-  }
-  
-  .save-button:hover {
-    background: var(--b3-theme-primary-hover);
-  }
 </style>

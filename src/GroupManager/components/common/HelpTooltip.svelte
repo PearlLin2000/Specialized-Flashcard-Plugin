@@ -27,7 +27,7 @@
     border-radius: 50%;
     background-color: var(--b3-theme-surface-light, #eee);
     color: var(--b3-theme-on-surface-light, #666);
-    font-size: 11px;
+    font-size: 14px;
     font-weight: bold;
     cursor: help;
     user-select: none;
@@ -35,7 +35,7 @@
   }
 
   .help-tooltip-wrapper:hover .help-icon {
-      transform: scale(1.1);
+      transform: scale(1.2);
   }
 
   .tooltip-content {
