@@ -8,13 +8,13 @@
   "backends": ["all"],
   "frontends": ["desktop"],
   "displayName": {
-    "zh_CN": "default"
+    "default": "专项闪卡插件"
   },
   "description": {
-    "zh_CN": "default"
+    "default": "基于sql检索，实现专项闪卡的复习、查看和批量优先级设置（可分组）"
   },
   "readme": {
-    "zh_CN": "default"
+    "default": "README.md"
   },
   "funding": {
     "custom": []
