@@ -107,15 +107,9 @@ export default class PluginSample extends Plugin {
         100,
         100
       );
-      /*(
-        `分组 "${group.name}" 查询完成，获取 ${sqlResult.length} 条原始数据`
-      );*/
 
       // 使用优化后的递归查找
       const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-      /*(
-        `分组 "${group.name}" 递归查找完成，得到 ${blockIds.length} 个闪卡块`
-      );*/
 
       if (!blockIds || blockIds.length === 0) {
         showMessage(`分组 "${group.name}" 未找到匹配的块`);
@@ -129,21 +123,11 @@ export default class PluginSample extends Plugin {
         return;
       }
 
-      if (
-        window.tomato_zZmqus5PtYRi?.cardPriorityBox
-          ?.updateDocPriorityBatchDialog
-      ) {
-        await window.tomato_zZmqus5PtYRi.cardPriorityBox.updateDocPriorityBatchDialog(
-          cards,
-          group.priority,
-          false
-        );
-        showMessage(
-          `触发 "${group.name}" 的闪卡设置优先级 ${group.priority} 调用，请耐心等待`
-        );
-      } else {
-        showMessage("番茄工作法插件API不可用");
-      }
+      // 使用 utils.ts 中的封装函数替代直接调用
+      await CardUtils.setCardsPriority(cards, group.priority);
+      showMessage(
+        `触发 "${group.name}" 的闪卡设置优先级 ${group.priority} 调用，请耐心等待`
+      );
     } catch (error) {
       console.error(`批量设置优先级失败:`, error);
       showMessage("批量设置优先级失败，请检查控制台");
@@ -479,8 +463,8 @@ export default class PluginSample extends Plugin {
       );
 
       if (postponableCards.length > 0) {
+        // 使用 utils.ts 中的封装函数替代直接调用
         await CardUtils.postponeCards(postponableCards, config.postponeDays);
-        //console.log(`自动推迟了 ${postponableCards.length} 张今日创建的闪卡`);
       }
     } catch (error) {
       console.error("推迟操作失败:", error);
