@@ -98,9 +98,9 @@ export const DEFAULT_CONFIG: PluginConfig = {
   groups: DEFAULT_GROUPS,
   groupCategories: DEFAULT_CATEGORIES,
   postponeDays: 2,
-  postponeEnabled: true,
+  postponeEnabled: false,
   scanInterval: 15,
-  priorityScanEnabled: true,
+  priorityScanEnabled: false,
   priorityScanInterval: 15,
   cacheUpdateInterval: 30,
 };
