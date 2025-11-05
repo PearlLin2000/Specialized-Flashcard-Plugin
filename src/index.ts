@@ -8,7 +8,6 @@ import {
   getFrontend,
   fetchSyncPost,
 } from "siyuan";
-import "./index.scss";
 import GroupManager from "./GroupManager/GroupManager.svelte";
 
 import { DataManager } from "./libs/DataManager";
