@@ -10,7 +10,7 @@ import {
 } from "siyuan";
 import GroupManager from "./GroupManager/GroupManager.svelte";
 
-import { DataManager } from "./libs/DataManager";
+import { DataManager } from "./DataManager/DataManager";
 import * as CardUtils from "./utils";
 
 export default class PluginSample extends Plugin {
