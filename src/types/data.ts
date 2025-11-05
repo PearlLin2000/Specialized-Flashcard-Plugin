@@ -11,6 +11,7 @@ export interface GroupConfig {
   priority: number;
   priorityEnabled: boolean;
   categoryId: string;
+  useCache: boolean; //  [新增] 是否优先使用缓存
 }
 
 /**
@@ -38,11 +39,11 @@ export interface PluginConfig {
   groups: GroupConfig[];
   groupCategories: GroupCategory[];
   postponeDays: number;
-  postponeEnabled: boolean; // 新增：是否启用自动推迟
+  postponeEnabled: boolean;
   scanInterval: number;
   priorityScanEnabled: boolean;
-  priorityScanInterval: number; // 变更：优先级扫描间隔（分钟）
-  cacheUpdateInterval: number; // 新增：SQL缓存更新间隔（分钟）
+  priorityScanInterval: number;
+  cacheUpdateInterval: number;
 }
 
 /**
@@ -65,6 +66,7 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     priority: 50,
     priorityEnabled: true,
     categoryId: "default",
+    useCache: true, // [新增] 默认启用
   },
   {
     id: "2",
@@ -75,6 +77,7 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     priority: 5,
     priorityEnabled: false,
     categoryId: "default",
+    useCache: true, // [新增] 默认启用
   },
 ];
 
@@ -95,11 +98,11 @@ export const DEFAULT_CONFIG: PluginConfig = {
   groups: DEFAULT_GROUPS,
   groupCategories: DEFAULT_CATEGORIES,
   postponeDays: 2,
-  postponeEnabled: true, // 新增：默认启用自动推迟
+  postponeEnabled: true,
   scanInterval: 15,
   priorityScanEnabled: true,
-  priorityScanInterval: 15, // 变更：优先级扫描间隔默认15分钟
-  cacheUpdateInterval: 30, // 新增：SQL缓存更新间隔默认30分钟
+  priorityScanInterval: 15,
+  cacheUpdateInterval: 30,
 };
 
 /**
