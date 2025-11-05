@@ -11,6 +11,14 @@ import {
   GroupConfig,
   GroupCategory,
 } from "../types/data";
+/**
+ * 卡包ID类
+ */
+
+export enum DeckId {
+  DEFAULT = "20230218211946-2kw8jgx",
+  TEMPORARY = "20251103121413-a4s0bfv",
+}
 
 /**
  * 数据管理器类
@@ -140,6 +148,27 @@ export class DataManager {
    */
   getGroups(): any[] {
     return [...this.config.groups];
+  }
+
+  /**
+   * 获取所有启用的分组
+   */
+  getEnabledGroups(): GroupConfig[] {
+    return this.config.groups.filter((group) => group.enabled);
+  }
+
+  /**
+   * 根据ID获取特定分组
+   */
+  getGroupById(groupId: string): GroupConfig | undefined {
+    return this.config.groups.find((g) => g.id === groupId);
+  }
+
+  /**
+   * 获取所有启用了“自动优先级调整”的分组
+   */
+  getPriorityEnabledGroups(): GroupConfig[] {
+    return this.getEnabledGroups().filter((group) => group.priorityEnabled);
   }
 
   /**
@@ -323,12 +352,15 @@ export class DataManager {
   }
 
   /**
-   * 检查缓存是否有效（基于时间戳）
+   * --- MODIFIED ---
+   * 检查缓存是否有效（基于配置中的 cacheUpdateInterval）
    */
-  isCacheValid(groupId: string, maxAgeMs: number = 30 * 60 * 1000): boolean {
+  isCacheValid(groupId: string): boolean {
     const cache = this.cache[groupId];
-    if (!cache) return false;
-
+    if (!cache) {
+      return false;
+    }
+    const maxAgeMs = this.config.cacheUpdateInterval * 60 * 1000;
     return Date.now() - cache.timestamp < maxAgeMs;
   }
 
@@ -383,5 +415,18 @@ export class DataManager {
       id: this.generateId(),
       name: "新组别",
     };
+  }
+
+  /**
+   * 卸载时彻底清除所有数据文件
+   */
+  async destroyAllData(): Promise<void> {
+    try {
+      await this.plugin.removeData(STORAGE_NAMES.CONFIG);
+      await this.plugin.removeData(STORAGE_NAMES.CACHE);
+      console.log("Plugin data (config and cache) removed successfully.");
+    } catch (error) {
+      console.error("Failed to remove plugin data during uninstall:", error);
+    }
   }
 }

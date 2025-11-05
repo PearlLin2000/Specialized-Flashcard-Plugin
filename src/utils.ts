@@ -1,5 +1,14 @@
 import { fetchSyncPost } from "siyuan";
 
+/**
+ * 卡包ID类：先写在这里。
+ */
+
+export enum DeckId {
+  DEFAULT = "20230218211946-2kw8jgx",
+  TEMPORARY = "20251103121413-a4s0bfv",
+}
+
 // ============== 1. API Wrappers ==============
 
 /**
@@ -166,15 +175,123 @@ export async function postponeCards(cards: any[], days: number): Promise<void> {
   }
 }
 
+// ============== 5. 文档流的链接构建与调用 ==============
+
+//文档流的链接构建
+
+function buildRuleURL(ruleType, ruleInput, title = null) {
+  // 参数验证
+  if (!ruleType || ruleInput === undefined || ruleInput === null) {
+    throw new Error("ruleType 和 ruleInput 都是必需参数");
+  }
+
+  if (!isValidRuleType(ruleType)) {
+    throw new Error(`无效的规则类型: ${ruleType}`);
+  }
+
+  const DOCS_FLOW_BASE_URL = "siyuan://plugins/sy-docs-flow/open-rule";
+
+  // 构建查询参数
+  const params = new URLSearchParams({
+    ruleType: ruleType,
+    ruleInput: preprocessInput(ruleType, ruleInput),
+  });
+
+  // 添加可选的 title 参数，URLSearchParams 会自动处理编码
+  if (title !== null && title !== undefined) {
+    params.append("ruleTitle", String(title));
+  }
+
+  // 返回完整 URL
+  return `${DOCS_FLOW_BASE_URL}?${params.toString()}`;
+}
+
+function isValidRuleType(ruleType) {
+  const validTypes = [
+    "ChildDocument",
+    "SQL",
+    "IdList",
+    "DocBacklinks",
+    "DocBackmentions",
+    "OffspringDocument",
+    "BlockBacklinks",
+    "JS",
+    "DailyNote",
+  ];
+  return validTypes.includes(ruleType);
+}
+
+function preprocessInput(ruleType: any, input: any) {
+  switch (ruleType) {
+    case "IdList":
+      return processIdListInput(input);
+    case "SQL":
+      return processSQLInput(input);
+    case "ChildDocument":
+    case "OffspringDocument":
+    case "DocBacklinks":
+    case "DocBackmentions":
+    case "BlockBacklinks":
+    case "DailyNote":
+      return processSingleIdInput(input);
+    case "JS":
+      return processJavaScriptInput(input);
+    default:
+      return String(input);
+  }
+}
+
+function processIdListInput(input: {
+  join: (arg0: string) => any;
+  split: (arg0: RegExp) => any[];
+}) {
+  if (Array.isArray(input)) {
+    return input.join(",");
+  } else if (typeof input === "string") {
+    return input
+      .split(/[\s,，]+/)
+      .filter((id) => id.trim())
+      .join(",");
+  }
+  return String(input);
+}
+
+function processSQLInput(input) {
+  if (typeof input !== "string") {
+    throw new Error("SQL 规则的输入必须是字符串");
+  }
+  return input.trim();
+}
+
+function processSingleIdInput(input) {
+  if (Array.isArray(input) && input.length > 0) {
+    return String(input[0]);
+  }
+  return String(input);
+}
+
+function processJavaScriptInput(input) {
+  if (typeof input !== "string") {
+    throw new Error("JS 规则的输入必须是字符串代码");
+  }
+  return input;
+}
+
 /**
  * 在文档流中打开SQL查询
  */
-export function openSQLFlow(sql: string, title: string = "SQL查询") {
-  const encodedSQL = encodeURIComponent(sql);
-  const encodedTitle = encodeURIComponent(title);
+export function openSQLFlow(sql: string, title?: string) {
+  const url = buildRuleURL("SQL", sql, title);
+  window.open(url);
+}
 
-  const url = `siyuan://plugins/sy-docs-flow/open-rule?ruleType=SQL&ruleInput=${encodedSQL}&title=${encodedTitle}`;
-
+/**
+ * 在文档流中打开ID列表查询
+ * @param blockIds 块ID数组，支持单个或多个ID
+ * @param title 可选的标题参数
+ */
+export function openIdListFlow(blockIds: string[], title?: string) {
+  const url = buildRuleURL("IdList", blockIds, title);
   window.open(url);
 }
 
@@ -471,4 +588,144 @@ export function isPostponableCard(card: any): boolean {
 export function filterPureTodayCards(cards: any[]): any[] {
   const todayString = getTodayString();
   return cards.filter((card) => isTodayCard(card, todayString));
+}
+
+/**
+ * 重置牌组中卡片的学习进度
+ * @param deckID 卡片组ID
+ * @param blockIDs 可选的块ID数组，如果不传或为空则重置所有卡片
+ * @returns 重置结果或null（失败时）
+ */
+export async function resetRiffDeck(
+  deckID: string,
+  blockIDs?: string[]
+): Promise<any> {
+  try {
+    const result = await fetchSyncPost("/api/riff/resetRiffCards", {
+      type: "deck",
+      id: deckID, // 对于type=deck，id就是deckID
+      deckID: deckID, // 同时传递deckID参数
+      blockIDs: blockIDs || [],
+    });
+
+    if (result.code !== 0) {
+      console.error("重置卡片失败:", result.msg);
+      return null;
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error("调用resetRiffCards API失败:", error);
+    return null;
+  }
+}
+
+/**
+ * 重置整个牌组的所有卡片
+ * @param deckID 卡片组ID
+ * @returns 重置结果或null（失败时）
+ */
+export async function resetEntireDeck(deckID: string): Promise<any> {
+  return resetRiffDeck(deckID, []);
+}
+
+// 闪卡操作函数封装
+async function getRiffCards(deckID, page = 1, pageSize = 100) {
+  const response = await fetchSyncPost("/api/riff/getRiffCards", {
+    id: deckID,
+    page: page,
+    pageSize: pageSize,
+  });
+
+  if (response && response.code === 0) {
+    return response.data;
+  } else {
+    throw new Error(response?.msg || "获取卡片失败");
+  }
+}
+
+async function removeRiffCards(deckID, blockIDs) {
+  const response = await fetchSyncPost("/api/riff/removeRiffCards", {
+    deckID: deckID,
+    blockIDs: blockIDs,
+  });
+
+  if (response && response.code === 0) {
+    return response.data;
+  } else {
+    throw new Error(response?.msg || "移除卡片失败");
+  }
+}
+
+async function batchCreateCards(blockIds: string[]) {
+  this.showLoadingDialog("正在批量制卡...");
+
+  try {
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const blockId of blockIds) {
+      try {
+        await addRiffCards([blockId]);
+        successCount++;
+      } catch (error) {
+        console.error(`制卡失败，块ID: ${blockId}`, error);
+        errorCount++;
+      }
+    }
+
+    this.closeLoadingDialog();
+
+    if (errorCount === 0) {
+      showMessage(`批量制卡完成，成功制作 ${successCount} 张卡片`);
+    } else {
+      showMessage(
+        `批量制卡完成，成功 ${successCount} 张，失败 ${errorCount} 张`
+      );
+    }
+  } catch (error) {
+    this.closeLoadingDialog();
+    console.error("批量制卡过程中发生错误:", error);
+    showMessage("批量制卡失败，请查看控制台错误信息");
+  }
+}
+
+async function clearDeck(deckID) {
+  try {
+    let allBlockIDs = [];
+    let page = 1;
+    const pageSize = 100;
+
+    console.log(`开始清空卡包: ${deckID}`);
+
+    while (true) {
+      const data = await getRiffCards(deckID, page, pageSize);
+
+      if (!data.blocks || data.blocks.length === 0) {
+        break;
+      }
+
+      const pageBlockIDs = data.blocks.map((card) => card.id);
+      allBlockIDs = allBlockIDs.concat(pageBlockIDs);
+
+      console.log(`第 ${page} 页获取到 ${pageBlockIDs.length} 张卡片`);
+
+      if (page >= data.pageCount) {
+        break;
+      }
+      page++;
+    }
+
+    if (allBlockIDs.length === 0) {
+      console.log("卡包为空，无需清理");
+      return;
+    }
+
+    console.log(`总共获取到 ${allBlockIDs.length} 张卡片，开始移除...`);
+    await removeRiffCards(deckID, allBlockIDs);
+    console.log(`成功移除 ${allBlockIDs.length} 张卡片`);
+  } catch (error) {
+    console.error("清空卡包时出错:", error);
+    throw error;
+  }
 }

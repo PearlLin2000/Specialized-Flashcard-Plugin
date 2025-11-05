@@ -1,7 +1,5 @@
-
 <script lang="ts">
-  //data的导入路径错了，考虑重构项目结构。
-  import type { GroupConfig } from '../types/data';
+  import type { GroupConfig } from '.../types/data';
   import { createEventDispatcher } from 'svelte';
   import HelpTooltip from '../common/HelpTooltip.svelte';
   
@@ -20,10 +18,18 @@
     dispatch('cancel');
   }
 
-  // 在文档流中打开
-  function handleOpenInDocument() {
+  // MODIFIED - Renamed function
+  function handleOpenInDocumentSQL() {
     if (!editingGroup) return;
-    plugin.handleOpenInDocument(editingGroup);
+    // MODIFIED - Updated plugin method call
+    plugin.handleOpenInDocumentSQL(editingGroup);
+  }
+
+  // MODIFIED - Renamed function
+  function handleOpenInDocumentAllCards() {
+    if (!editingGroup) return;
+    // MODIFIED - Updated plugin method call
+    plugin.handleOpenInDocumentAllCards(editingGroup);
   }
 
   // 批量设置优先级
@@ -60,21 +66,20 @@
           <span class="toggle-text">启用分组</span>
         </label>
       </div>
-      <button class="func-button open-in-document" on:click={handleOpenInDocument}>
+      <!-- MODIFIED - Updated on:click handler -->
+      <button class="func-button open-in-document" on:click={handleOpenInDocumentSQL}>
         在文档流中打开（原始）
       </button>
 
-      <!-- ADDED START -->
       <div class="form-item-help">
         <HelpTooltip>
-            <strong>请安装文档流插件，并确认启用:</strong>
+            <strong>请安装文档流插件，并确认启用。</strong>
             <ul style="margin: 4px 0 0 18px; padding: 0; list-style-type: disc;">
                 <li>所见即所得：基于原始 SQL。</li>
                 <li>不包含闪卡过滤。不进行递归处理。</li>
             </ul>
         </HelpTooltip>
       </div>
-      <!-- ADDED END -->
     </div>
     
     <!-- 第二行：优先级设置 + 启用优先级扫描 + 批量设置优先级按钮 -->
@@ -99,18 +104,36 @@
           <span class="toggle-text">启用优先级扫描</span>
         </label>
       </div>
-        <button class="func-button batch-priority" on:click={handleBatchPriority}>
-          批量设置优先级（全部）
-        </button>
-            <div class="form-item-help">
+
+      <!-- MODIFIED - Updated on:click handler -->
+      <button class="func-button open-in-document-all" on:click={handleOpenInDocumentAllCards}>
+        在文档流中打开（全部）
+      </button>
+      <div class="form-item-help">
         <HelpTooltip>
-            <strong>请安装番茄工具箱插件，并确认启用:</strong>
+            <strong>请安装文档流插件，并确认启用。</strong>
+            <ul style="margin: 4px 0 0 18px; padding: 0; list-style-type: disc;">
+                <li>逻辑等于右侧：批量设置优先级。</li>
+                <li>点这里可以看到最终会出现在闪卡TAB中的全部闪卡。</li>
+            </ul>
+        </HelpTooltip>
+      </div>
+
+      <button class="func-button batch-priority" on:click={handleBatchPriority}>
+        批量设置优先级（全部）
+      </button>
+
+      <div class="form-item-help">
+        <HelpTooltip>
+            <strong>【不可逆】点击优先级调整之前，请点击在文档流中查看（全部）核验。</strong>
+            <strong>请安装番茄工具箱插件，并确认启用。</strong>
             <ul style="margin: 4px 0 0 18px; padding: 0; list-style-type: disc;">
                 <li>包含闪卡过滤，包含内置递归处理。</li>
                 <li>包含到期闪卡和未到期闪卡。</li>
             </ul>
         </HelpTooltip>
       </div>
+
     </div>
 
     <!-- SQL查询语句 -->
@@ -165,14 +188,12 @@
     align-items: flex-end;
     gap: 12px;
   }
-
-  /* ADDED START */
+  
   .form-item-help {
     margin-left: -4px; /* 自定义与按钮的距离 */
     margin-bottom: 3px;/* 微调垂直对齐 */
   }
-  /* ADDED END */
-
+  
   .toggle-label.small-text .toggle-text {
     font-size: 13px;
     color: var(--b3-theme-on-surface-light);
@@ -296,6 +317,17 @@
   }
   
   .func-button.open-in-document:hover {
+    background: var(--b3-theme-secondary);
+    color: white;
+  }
+
+  .func-button.open-in-document-all {
+    background: var(--b3-theme-secondary-light);
+    border-color: var(--b3-theme-secondary);
+    color: var(--b3-theme-secondary);
+  }
+  
+  .func-button.open-in-document-all:hover {
     background: var(--b3-theme-secondary);
     color: white;
   }

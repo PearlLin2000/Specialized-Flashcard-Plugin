@@ -31,6 +31,13 @@ export default class PluginSample extends Plugin {
     await this.preloadGroupData(true);
 
     this.startScheduledTasks();
+
+    const result = await fetchSyncPost("/api/riff/getRiffCards", {
+      id: "20230218211946-2kw8jgx",
+      page: 1,
+      pageSize: 5,
+    });
+    console.log("测试getRiffCards请求结果:", result);
   }
 
   onLayoutReady() {
@@ -69,10 +76,10 @@ export default class PluginSample extends Plugin {
 
   openSetting(): void {
     let dialog = new Dialog({
-      title: "闪卡分组管理",
+      title: "专项闪卡设置",
       content: `<div id="SettingPanel" style="height: 100%;"></div>`,
-      width: "800px",
-      height: "600px",
+      width: "1000px",
+      height: "650px",
       destroyCallback: () => {
         // 变更配置后：进行一次缓存数据的更新
         this.preloadGroupData(true); // true 表示强制更新缓存
@@ -85,18 +92,11 @@ export default class PluginSample extends Plugin {
       props: {
         plugin: this,
         dataManager: this.dataManager,
-        // *** MODIFIED ***
-        // GroupManager 内部已经通过 dataManager 保存了变更。
-        // 这里只需要在配置变更后触发缓存的强制更新即可。
         onConfigUpdate: async () => {
           await this.preloadGroupData(true);
         },
       },
     });
-  }
-
-  private getGroupsConfig(): any[] {
-    return this.dataManager.getGroups();
   }
 
   async handleBatchPriority(group: any): Promise<void> {
@@ -134,13 +134,43 @@ export default class PluginSample extends Plugin {
     }
   }
 
-  handleOpenInDocument(group: any): void {
+  // --- MODIFIED START ---
+  // 1. 方法被重命名
+  handleOpenInDocumentSQL(group: any): void {
     CardUtils.openSQLFlow(group.sqlQuery, `${group.name}-SQL查询`);
     showMessage(
       `请确保文档流插件安装并启用。
       本次调用的文档流显示的为原始查询，不包含内置的闪卡过滤。`
     );
   }
+
+  // 2. 新增实现的方法
+  async handleOpenInDocumentAllCards(group: any): Promise<void> {
+    try {
+      // 复用与 handleBatchPriority 相同的逻辑来查找块
+      const sqlResult = await CardUtils.paginatedSQLQuery(
+        group.sqlQuery,
+        100,
+        100
+      );
+      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
+
+      if (!blockIds || blockIds.length === 0) {
+        showMessage(`分组 "${group.name}" 未找到匹配的闪卡块`);
+        return;
+      }
+
+      // 使用 utils 中的 openIdListFlow 函数打开文档流
+      CardUtils.openIdListFlow(blockIds, `${group.name}-闪卡块查询`);
+      showMessage(
+        `正在文档流中打开 "${group.name}" 查找到的 ${blockIds.length} 个闪卡块...`
+      );
+    } catch (error) {
+      console.error(`在文档流中打开（全部）失败:`, error);
+      showMessage("在文档流中打开失败，请检查控制台");
+    }
+  }
+  // --- MODIFIED END ---
 
   private startScheduledTasks(): void {
     this.stopScheduledTasks();
@@ -164,17 +194,10 @@ export default class PluginSample extends Plugin {
         console.log("优先级扫描及设置执行完毕");
       } catch (error) {
         console.error("优先级扫描任务执行失败:", error);
-        // 可以根据错误类型决定是否停止定时器
       }
     };
 
-    /*console.log(
-      `启动优先级扫描及设置任务，间隔${config.priorityScanInterval}分钟`
-    );*/
-
     this.priorityScanTimer = window.setInterval(executeTask, intervalMs);
-
-    // 立即执行一次
     executeTask();
   }
 
@@ -190,11 +213,7 @@ export default class PluginSample extends Plugin {
       }
     };
 
-    //console.log(`启动缓存更新任务，间隔${config.cacheUpdateInterval}分钟`);
-
     this.cacheUpdateTimer = window.setInterval(executeTask, intervalMs);
-
-    // 立即执行一次
     executeTask();
   }
 
@@ -238,12 +257,8 @@ export default class PluginSample extends Plugin {
     const config = this.dataManager.getConfig();
     if (!config.priorityScanEnabled) return;
 
-    const enabledGroups = this.getGroupsConfig().filter(
-      (group) => group.enabled && group.priorityEnabled
-    );
+    const enabledGroups = this.dataManager.getPriorityEnabledGroups();
     if (enabledGroups.length === 0) return;
-
-    //(`开始自动优先级扫描，处理${enabledGroups.length}个分组`);
 
     for (const group of enabledGroups) {
       await this.scanGroupPriority(group);
@@ -251,7 +266,7 @@ export default class PluginSample extends Plugin {
   }
 
   private async preloadGroupData(forceUpdate: boolean = false): Promise<void> {
-    const groups = this.getGroupsConfig().filter((group) => group.enabled);
+    const groups = this.dataManager.getEnabledGroups();
     for (const group of groups) {
       try {
         await this.executeAndCacheQuery(group, forceUpdate);
@@ -265,51 +280,33 @@ export default class PluginSample extends Plugin {
     group: any,
     forceUpdate: boolean = false
   ): Promise<string[]> {
-    const config = this.dataManager.getConfig();
-    const cacheMaxAgeMs = config.cacheUpdateInterval * 60 * 1000;
-
-    if (
-      !forceUpdate &&
-      this.dataManager.isCacheValid(group.id, cacheMaxAgeMs)
-    ) {
+    if (!forceUpdate && this.dataManager.isCacheValid(group.id)) {
       const cached = this.dataManager.getGroupCache(group.id);
       if (cached) {
-        //(`使用缓存数据 for group: ${group.name}`);
         return cached.blockIds;
       }
     }
 
-    //(`开始执行分组查询: ${group.name}`);
-
     try {
-      // 使用分页查询替代直接查询
       const sqlResult = await CardUtils.paginatedSQLQuery(
         group.sqlQuery,
         100,
         100
       );
-      /*(
-        `分组 ${group.name} 查询完成，获取 ${sqlResult.length} 条原始数据`
-      );*/
 
-      // 使用优化后的递归查找
       const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-      /*console.log(
-        `分组 ${group.name} 递归查找完成，得到 ${blockIds.length} 个闪卡块`
-      );*/
 
       await this.dataManager.updateGroupCache(group.id, blockIds);
       return blockIds;
     } catch (error) {
       console.error(`分组 ${group.name} 查询失败:`, error);
-      // 返回空数组而不是抛出错误，避免影响其他分组
       return [];
     }
   }
 
   private addMenu(rect?: DOMRect) {
     const menu = new Menu("card-group-menu");
-    const groups = this.getGroupsConfig().filter((group) => group.enabled);
+    const groups = this.dataManager.getEnabledGroups();
     menu.addItem({
       icon: "iconSettings",
       label: "设置",
@@ -339,7 +336,7 @@ export default class PluginSample extends Plugin {
 
   private async createRiffCardsByGroup(groupId: string) {
     try {
-      const group = this.getGroupsConfig().find((g) => g.id === groupId);
+      const group = this.dataManager.getGroupById(groupId);
       if (!group) {
         showMessage(`未找到分组: ${groupId}`);
         return;
@@ -398,34 +395,22 @@ export default class PluginSample extends Plugin {
 
   private async scanGroupPriority(group: any): Promise<void> {
     try {
-      //(`=== 开始扫描分组 "${group.name}" ===`);
-
-      // 使用分页查询
       const sqlResult = await CardUtils.paginatedSQLQuery(
         group.sqlQuery,
         100,
-        100 //
+        100
       );
 
-      // 使用优化递归查找
       const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-      /*console.log(
-        `分组 "${group.name}" 递归查找完成，得到 ${blockIds.length} 个闪卡块`
-      );*/
 
       if (!blockIds || blockIds.length === 0) {
-        //console.log(`分组 "${group.name}" 未找到匹配的块`);
         return;
       }
 
       const cards = await CardUtils.getRiffCardsByBlockIds(blockIds);
-      //(`获取到闪卡数量: ${cards.length}`);
-
       const todayCards = CardUtils.filterPureTodayCards(cards);
-      //(`今日创建的闪卡数量: ${todayCards.length}`);
 
       if (todayCards.length === 0) {
-        //(`分组 "${group.name}" 没有今日创建的闪卡`);
         return;
       }
 
@@ -434,16 +419,10 @@ export default class PluginSample extends Plugin {
       );
 
       if (cardsToUpdate.length === 0) {
-        /*(
-          `分组 "${group.name}" 所有今日闪卡已经是目标优先级 ${group.priority}`
-        );*/
         return;
       }
 
       await CardUtils.setCardsPriority(cardsToUpdate, group.priority);
-      /*console.log(
-        `分组 "${group.name}" 成功设置 ${cardsToUpdate.length} 张闪卡，优先级为 ${group.priority}`
-      );*/
     } catch (error) {
       console.error(`分组 "${group.name}" 优先级扫描失败:`, error);
     }
@@ -463,7 +442,6 @@ export default class PluginSample extends Plugin {
       );
 
       if (postponableCards.length > 0) {
-        // 使用 utils.ts 中的封装函数替代直接调用
         await CardUtils.postponeCards(postponableCards, config.postponeDays);
       }
     } catch (error) {
@@ -472,7 +450,6 @@ export default class PluginSample extends Plugin {
   }
 }
 
-// 声明全局变量，避免 TypeScript 报错
 declare global {
   interface Window {
     tomato_zZmqus5PtYRi: any;
