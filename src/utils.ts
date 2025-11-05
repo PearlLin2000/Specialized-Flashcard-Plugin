@@ -1,4 +1,4 @@
-import { fetchSyncPost } from "siyuan";
+import { fetchSyncPost, showMessage } from "siyuan";
 
 /**
  * 卡包ID类：先写在这里。
