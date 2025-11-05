@@ -11,21 +11,24 @@ import {
 import GroupManager from "./GroupManager/GroupManager.svelte";
 import { DataManager } from "./DataManager/DataManager";
 import * as CardUtils from "./utils";
-import { GroupActionService } from "./GroupActionService"; // 新增导入
+import { GroupActionService } from "./GroupActionService";
+import { AutomationService } from "./AutomationService";
 
 export default class PluginSample extends Plugin {
   private isMobile: boolean;
   private priorityScanTimer: number | null = null;
   private cacheUpdateTimer: number | null = null;
   private dataManager: DataManager;
-  private groupActionService: GroupActionService; // 新增服务实例
+  private groupActionService: GroupActionService;
+  private automationService: AutomationService;
 
   // ==================== 生命周期方法 ====================
 
   async onload() {
     this.dataManager = new DataManager(this);
     await this.dataManager.initialize();
-    this.groupActionService = new GroupActionService(); // 初始化服务
+    this.groupActionService = new GroupActionService();
+    this.automationService = new AutomationService(this.dataManager, CardUtils);
 
     const frontEnd = getFrontend();
     this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
@@ -129,10 +132,10 @@ export default class PluginSample extends Plugin {
     const intervalMs = config.priorityScanInterval * 60 * 1000;
     const executeTask = () => {
       try {
-        this.executePriorityScanTasks();
-        console.log("优先级扫描及设置执行完毕");
+        this.automationService.executeAutomationTasks();
+        console.log("自动化任务执行完毕");
       } catch (error) {
-        console.error("优先级扫描任务执行失败:", error);
+        console.error("自动化任务执行失败:", error);
       }
     };
 
@@ -170,17 +173,6 @@ export default class PluginSample extends Plugin {
   private restartScheduledTasks() {
     this.stopScheduledTasks();
     this.startScheduledTasks();
-  }
-
-  private async executePriorityScanTasks() {
-    try {
-      await Promise.allSettled([
-        this.postponeTodayCards(),
-        this.performPriorityScan(),
-      ]);
-    } catch (error) {
-      console.error("优先级扫描任务执行失败:", error);
-    }
   }
 
   private async executeCacheUpdateTasks() {
@@ -320,75 +312,6 @@ export default class PluginSample extends Plugin {
         },
       },
     });
-  }
-
-  // ==================== 私有方法 - 核心业务逻辑 ====================
-
-  private async performPriorityScan(): Promise<void> {
-    const config = this.dataManager.getConfig();
-    if (!config.priorityScanEnabled) return;
-
-    const enabledGroups = this.dataManager.getPriorityEnabledGroups();
-    if (enabledGroups.length === 0) return;
-
-    for (const group of enabledGroups) {
-      await this.scanGroupPriority(group);
-    }
-  }
-
-  private async scanGroupPriority(group: any): Promise<void> {
-    try {
-      const sqlResult = await CardUtils.paginatedSQLQuery(
-        group.sqlQuery,
-        100,
-        100
-      );
-      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-
-      if (!blockIds || blockIds.length === 0) {
-        return;
-      }
-
-      const cards = await CardUtils.getRiffCardsByBlockIds(blockIds);
-      const todayCards = CardUtils.filterPureTodayCards(cards);
-
-      if (todayCards.length === 0) {
-        return;
-      }
-
-      const cardsToUpdate = todayCards.filter(
-        (card) => card.priority !== group.priority
-      );
-
-      if (cardsToUpdate.length === 0) {
-        return;
-      }
-
-      await CardUtils.setCardsPriority(cardsToUpdate, group.priority);
-    } catch (error) {
-      console.error(`分组 "${group.name}" 优先级扫描失败:`, error);
-    }
-  }
-
-  private async postponeTodayCards(): Promise<void> {
-    try {
-      const config = this.dataManager.getConfig();
-      if (!config.postponeEnabled || config.postponeDays <= 0) return;
-
-      const allCards =
-        await window.tomato_zZmqus5PtYRi.siyuan.getRiffCardsAllFlat();
-      const todayCards = CardUtils.filterPureTodayCards(allCards);
-
-      const postponableCards = todayCards.filter((card) =>
-        CardUtils.isPostponableCard(card)
-      );
-
-      if (postponableCards.length > 0) {
-        await CardUtils.postponeCards(postponableCards, config.postponeDays);
-      }
-    } catch (error) {
-      console.error("推迟操作失败:", error);
-    }
   }
 }
 
