@@ -1,3 +1,4 @@
+// src/index.ts
 import {
   Plugin,
   showMessage,
@@ -11,16 +12,18 @@ import {
 import GroupManager from "./GroupManager/GroupManager.svelte";
 import { DataManager } from "./DataManager/DataManager";
 import * as CardUtils from "./utils";
-import { GroupActionService } from "./GroupActionService";
-import { AutomationService } from "./AutomationService";
+import { GroupActionService } from "./services/GroupActionService";
+import { AutomationService } from "./services/AutomationService";
+import { MenuService } from "./services/MenuService";
+import { TimerService } from "./services/TimerService";
 
 export default class PluginSample extends Plugin {
   private isMobile: boolean;
-  private priorityScanTimer: number | null = null;
-  private cacheUpdateTimer: number | null = null;
+  private timerService: TimerService;
   private dataManager: DataManager;
   private groupActionService: GroupActionService;
   private automationService: AutomationService;
+  private menuService: MenuService;
 
   // ==================== 生命周期方法 ====================
 
@@ -33,6 +36,30 @@ export default class PluginSample extends Plugin {
     const frontEnd = getFrontend();
     this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
 
+    // 初始化 TimerService
+    this.timerService = new TimerService({
+      onPriorityScan: () => {
+        this.automationService.executeAutomationTasks();
+        console.log("自动化任务执行完毕");
+      },
+      onCacheUpdate: async () => {
+        await this.executeCacheUpdateTasks();
+        console.log("缓存更新任务执行完毕");
+      },
+    });
+
+    // 初始化 MenuService
+    this.menuService = new MenuService({
+      plugin: this,
+      dataManager: this.dataManager,
+      groupActionService: this.groupActionService,
+      cardUtils: CardUtils,
+      isMobile: this.isMobile,
+      onConfigUpdate: async () => {
+        await this.preloadGroupData(true);
+      },
+    });
+
     await this.preloadGroupData(true);
     this.startScheduledTasks();
   }
@@ -43,20 +70,26 @@ export default class PluginSample extends Plugin {
       title: this.i18n.addTopBarIcon,
       position: "right",
       callback: () => {
-        if (this.isMobile) {
-          this.addMenu();
-        } else {
-          let rect = topBarElement.getBoundingClientRect();
+        let rect: DOMRect | undefined;
+
+        if (!this.isMobile) {
+          rect = topBarElement.getBoundingClientRect();
           if (rect.width === 0) {
-            rect = document.querySelector("#barMore").getBoundingClientRect();
+            const moreBar = document.querySelector("#barMore");
+            if (moreBar) {
+              rect = moreBar.getBoundingClientRect();
+            }
           }
-          if (rect.width === 0) {
-            rect = document
-              .querySelector("#barPlugins")
-              .getBoundingClientRect();
+          if (rect && rect.width === 0) {
+            const pluginsBar = document.querySelector("#barPlugins");
+            if (pluginsBar) {
+              rect = pluginsBar.getBoundingClientRect();
+            }
           }
-          this.addMenu(rect);
         }
+
+        // 使用 MenuService 构建菜单
+        this.menuService.buildMainMenu(rect);
       },
     });
   }
@@ -96,7 +129,14 @@ export default class PluginSample extends Plugin {
     });
   }
 
-  // 委托给 GroupActionService 的方法
+  /**
+   * 打开分组上下文菜单
+   */
+  openGroupContextMenu(group: any, rect?: DOMRect): void {
+    this.menuService.buildGroupContextMenu(group, rect);
+  }
+
+  // 委托给 GroupActionService 的方法保持不变
   async handleBatchPriority(group: any): Promise<void> {
     return this.groupActionService.handleBatchPriority(group);
   }
@@ -112,60 +152,17 @@ export default class PluginSample extends Plugin {
   // ==================== 私有方法 - 定时任务管理 ====================
 
   private startScheduledTasks(): void {
-    this.stopScheduledTasks();
     const config = this.dataManager.getConfig();
-
-    this.createPriorityScanTask(config);
-    this.createCacheUpdateTask(config);
-  }
-
-  private createPriorityScanTask(config: any): void {
-    if (!config.priorityScanEnabled) return;
-
-    const intervalMs = config.priorityScanInterval * 60 * 1000;
-    const executeTask = () => {
-      try {
-        this.automationService.executeAutomationTasks();
-        console.log("自动化任务执行完毕");
-      } catch (error) {
-        console.error("自动化任务执行失败:", error);
-      }
-    };
-
-    this.priorityScanTimer = window.setInterval(executeTask, intervalMs);
-    executeTask();
-  }
-
-  private createCacheUpdateTask(config: any): void {
-    const intervalMs = config.cacheUpdateInterval * 60 * 1000;
-    const executeTask = () => {
-      try {
-        this.executeCacheUpdateTasks();
-        console.log("缓存更新任务执行完毕");
-      } catch (error) {
-        console.error("缓存更新任务执行失败:", error);
-      }
-    };
-
-    this.cacheUpdateTimer = window.setInterval(executeTask, intervalMs);
-    executeTask();
+    this.timerService.start(config);
   }
 
   private stopScheduledTasks(): void {
-    if (this.priorityScanTimer) {
-      window.clearInterval(this.priorityScanTimer);
-      this.priorityScanTimer = null;
-    }
-
-    if (this.cacheUpdateTimer) {
-      window.clearInterval(this.cacheUpdateTimer);
-      this.cacheUpdateTimer = null;
-    }
+    this.timerService.stop();
   }
 
-  private restartScheduledTasks() {
-    this.stopScheduledTasks();
-    this.startScheduledTasks();
+  private restartScheduledTasks(): void {
+    const config = this.dataManager.getConfig();
+    this.timerService.restart(config);
   }
 
   private async executeCacheUpdateTasks() {
@@ -187,101 +184,5 @@ export default class PluginSample extends Plugin {
         console.error(`预加载分组 "${group.name}" 失败:`, error);
       }
     }
-  }
-
-  // ==================== 私有方法 - 菜单和界面 ====================
-
-  private addMenu(rect?: DOMRect) {
-    const menu = new Menu("card-group-menu");
-    const groups = this.dataManager.getEnabledGroups();
-
-    menu.addItem({
-      icon: "iconSettings",
-      label: "设置",
-      click: () => this.openSetting(),
-    });
-    menu.addSeparator();
-
-    if (groups.length > 0) {
-      groups.forEach((group) => {
-        menu.addItem({
-          icon: "iconRiffCard",
-          label: "到期：" + group.name,
-          click: () => this.createRiffCardsByGroup(group.id),
-        });
-      });
-    }
-
-    if (this.isMobile) {
-      menu.fullscreen();
-    } else {
-      menu.open({
-        x: rect.right,
-        y: rect.bottom,
-        isLeft: true,
-      });
-    }
-  }
-
-  private async createRiffCardsByGroup(groupId: string) {
-    try {
-      const group = this.dataManager.getGroupById(groupId);
-      if (!group) {
-        showMessage(`未找到分组: ${groupId}`);
-        return;
-      }
-
-      // 使用 DataManager 的 executeAndCacheQuery 方法
-      const blockIds = await this.dataManager.executeAndCacheQuery(
-        group,
-        false
-      );
-      await this.openGroupRiffCards(blockIds, group.name);
-    } catch (error) {
-      console.error(`创建分组 ${groupId} 的闪卡时发生错误:`, error);
-      showMessage("创建闪卡失败，请检查控制台");
-    }
-  }
-
-  private async openGroupRiffCards(blockIds: string[], groupName: string) {
-    const deckID = "20230218211946-2kw8jgx";
-
-    try {
-      const cardsData = await CardUtils.buildDueCardsData(deckID, blockIds);
-
-      if (!cardsData) {
-        throw new Error("构建闪卡数据失败");
-      }
-
-      this.openRiffReviewTab(`${groupName}-专项闪卡`, cardsData);
-    } catch (error) {
-      console.error("打开闪卡复习界面时发生错误:", error);
-      throw error;
-    }
-  }
-
-  private openRiffReviewTab(
-    title: string,
-    cardsData: {
-      cards: any[];
-      unreviewedCount: number;
-      unreviewedNewCardCount: number;
-      unreviewedOldCardCount: number;
-    }
-  ): void {
-    openTab({
-      app: this.app,
-      custom: {
-        title: title,
-        icon: "iconRiffCard",
-        id: "siyuan-card",
-        data: {
-          cardType: "all",
-          id: "",
-          title: "自定义闪卡",
-          cardsData: cardsData,
-        },
-      },
-    });
   }
 }

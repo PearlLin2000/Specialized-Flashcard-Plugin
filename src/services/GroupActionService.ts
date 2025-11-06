@@ -1,6 +1,6 @@
 // GroupActionService.ts
 import { showMessage } from "siyuan";
-import * as CardUtils from "./utils";
+import * as CardUtils from "../utils";
 
 export class GroupActionService {
   async handleBatchPriority(group: any): Promise<void> {
