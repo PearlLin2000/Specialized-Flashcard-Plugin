@@ -491,39 +491,6 @@ async function removeRiffCards(deckID: any, blockIDs: any) {
   }
 }
 
-async function batchCreateCards(blockIds: string[]) {
-  this.showLoadingDialog("正在批量制卡...");
-
-  try {
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const blockId of blockIds) {
-      try {
-        await addRiffCards([blockId]);
-        successCount++;
-      } catch (error) {
-        console.error(`制卡失败，块ID: ${blockId}`, error);
-        errorCount++;
-      }
-    }
-
-    this.closeLoadingDialog();
-
-    if (errorCount === 0) {
-      showMessage(`批量制卡完成，成功制作 ${successCount} 张卡片`);
-    } else {
-      showMessage(
-        `批量制卡完成，成功 ${successCount} 张，失败 ${errorCount} 张`
-      );
-    }
-  } catch (error) {
-    this.closeLoadingDialog();
-    console.error("批量制卡过程中发生错误:", error);
-    showMessage("批量制卡失败，请查看控制台错误信息");
-  }
-}
-
 async function clearDeck(deckID: any) {
   try {
     let allBlockIDs = [];
