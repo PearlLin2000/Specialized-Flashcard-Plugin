@@ -1,5 +1,7 @@
 // utils.ts
 import { fetchSyncPost, showMessage } from "siyuan";
+import * as sqlAPI from "./API/apiSiyuanSQL";
+import * as riffAPI from "./API/apiSiyuanCard";
 
 // ============== 1. 常量定义 ==============
 
@@ -13,8 +15,6 @@ export enum DeckId {
 
 // ============== 2. API 封装函数 ==============
 
-// ============== 2. API 封装函数 ==============
-
 /**
  * 检查块是否具有闪卡属性
  */
@@ -22,7 +22,7 @@ export async function checkBlockHasCardAttribute(
   blockId: string
 ): Promise<{ blockId: string; hasAttribute: boolean }> {
   const attributeQuery = `SELECT 1 FROM attributes WHERE block_id = '${blockId}' AND name = 'custom-riff-decks' LIMIT 1`;
-  const result = await sql(attributeQuery);
+  const result = await sqlAPI.sql(attributeQuery);
   return { blockId, hasAttribute: result?.length > 0 };
 }
 
@@ -33,7 +33,7 @@ export async function getParentBlocks(blockIds: string[]): Promise<string[]> {
   if (blockIds.length === 0) return [];
   const idList = blockIds.map((id) => `'${id}'`).join(",");
   const parentQuery = `SELECT parent_id FROM blocks WHERE id IN (${idList}) AND parent_id IS NOT NULL`;
-  const result = await sql(parentQuery);
+  const result = await sqlAPI.sql(parentQuery);
   return result.map((block: any) => block.parent_id).filter((id: string) => id);
 }
 
@@ -50,7 +50,8 @@ export async function getRiffDueCards(
   unreviewedOldCardCount: number;
 } | null> {
   try {
-    const result = await getRiffDueCards(deckID, reviewedCardIDs);
+    const reviewedCards = reviewedCardIDs.map((cardID) => ({ cardID }));
+    const result = await riffAPI.getRiffDueCards(deckID, reviewedCards);
 
     if (!result) {
       console.error("获取到期闪卡失败");
@@ -74,7 +75,7 @@ export async function addRiffCards(
   if (blockIDs.length === 0) return null;
 
   try {
-    const result = await addRiffCards(deckID, blockIDs);
+    const result = await riffAPI.addRiffCards(deckID, blockIDs);
 
     if (!result) {
       console.error("添加闪卡失败");
@@ -112,7 +113,7 @@ export async function getRiffCardsByBlockIds(
   if (blockIds.length === 0) return [];
 
   try {
-    const result = await getRiffCardsByBlockIDs(blockIds);
+    const result = await riffAPI.getRiffCardsByBlockIDs(blockIds);
 
     if (!result) {
       console.error("内置API获取闪卡失败");
@@ -300,11 +301,13 @@ export async function buildDueCardsData(
   unreviewedOldCardCount: number;
 } | null> {
   try {
-    const duecardsResponse = await fetchSyncPost("/api/riff/getRiffDueCards", {
-      deckID: deckID,
-    });
+    const duecardsResponse = await riffAPI.getRiffDueCards(deckID);
 
-    const filteredCards = duecardsResponse.data.cards.filter((card: any) =>
+    if (!duecardsResponse) {
+      return null;
+    }
+
+    const filteredCards = duecardsResponse.cards.filter((card: any) =>
       blockIds.includes(card.blockID)
     );
 
@@ -399,18 +402,16 @@ export async function paginatedSQLQuery(
     }
 
     try {
-      const result = await fetchSyncPost("/api/query/sql", {
-        stmt: paginatedSQL,
-      });
+      const result = await sqlAPI.sql(paginatedSQL);
 
-      if (!result.data || result.data.length === 0) {
+      if (!result || result.length === 0) {
         break;
       }
 
-      allResults = allResults.concat(result.data);
+      allResults = allResults.concat(result);
 
       // 如果返回数量小于pageSize，说明已经是最后一页
-      if (result.data.length < pageSize) {
+      if (result.length < pageSize) {
         break;
       }
 
@@ -441,19 +442,19 @@ export async function resetRiffDeck(
   blockIDs?: string[]
 ): Promise<any> {
   try {
-    const result = await fetchSyncPost("/api/riff/resetRiffCards", {
-      type: "deck",
-      id: deckID, // 对于type=deck，id就是deckID
-      deckID: deckID, // 同时传递deckID参数
-      blockIDs: blockIDs || [],
-    });
+    const result = await riffAPI.resetRiffCards(
+      "deck",
+      deckID,
+      deckID,
+      blockIDs
+    );
 
-    if (result.code !== 0) {
-      console.error("重置卡片失败:", result.msg);
+    if (!result) {
+      console.error("重置卡片失败");
       return null;
     }
 
-    return result.data;
+    return result;
   } catch (error) {
     console.error("调用resetRiffCards API失败:", error);
     return null;
@@ -471,29 +472,22 @@ export async function resetEntireDeck(deckID: string): Promise<any> {
 
 // 闪卡操作辅助函数（内部使用）
 async function getRiffCards(deckID: any, page: any = 1, pageSize: any = 100) {
-  const response = await fetchSyncPost("/api/riff/getRiffCards", {
-    id: deckID,
-    page: page,
-    pageSize: pageSize,
-  });
+  const response = await riffAPI.getRiffCards(deckID, page, pageSize);
 
-  if (response && response.code === 0) {
-    return response.data;
+  if (response) {
+    return response;
   } else {
-    throw new Error(response?.msg || "获取卡片失败");
+    throw new Error("获取卡片失败");
   }
 }
 
 async function removeRiffCards(deckID: any, blockIDs: any) {
-  const response = await fetchSyncPost("/api/riff/removeRiffCards", {
-    deckID: deckID,
-    blockIDs: blockIDs,
-  });
+  const response = await riffAPI.removeRiffCards(deckID, blockIDs);
 
-  if (response && response.code === 0) {
-    return response.data;
+  if (response) {
+    return response;
   } else {
-    throw new Error(response?.msg || "移除卡片失败");
+    throw new Error("移除卡片失败");
   }
 }
 
