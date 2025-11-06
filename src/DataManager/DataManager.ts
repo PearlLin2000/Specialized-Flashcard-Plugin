@@ -11,10 +11,11 @@ import {
   GroupConfig,
   GroupCategory,
 } from "../types/data";
+import * as CardUtils from "../utils";
+
 /**
  * 卡包ID类
  */
-
 export enum DeckId {
   DEFAULT = "20230218211946-2kw8jgx",
   TEMPORARY = "20251103121413-a4s0bfv",
@@ -35,6 +36,8 @@ export class DataManager {
     this.cache = { ...DEFAULT_CACHE };
   }
 
+  // ==================== 初始化 ====================
+
   /**
    * 初始化数据管理器
    */
@@ -42,6 +45,8 @@ export class DataManager {
     await this.loadConfig();
     await this.loadCache();
   }
+
+  // ==================== 配置管理 ====================
 
   /**
    * 加载配置文件
@@ -69,29 +74,6 @@ export class DataManager {
   }
 
   /**
-   * 合并分组数据，确保新字段有默认值
-   */
-  private mergeGroups(storedGroups: any[]): any[] {
-    return storedGroups.map((group) => ({
-      ...DEFAULT_CONFIG.groups[0], // 使用第一个默认分组作为模板
-      ...group,
-    }));
-  }
-
-  /**
-   * 加载缓存数据
-   */
-  private async loadCache(): Promise<void> {
-    try {
-      const storedCache = await this.plugin.loadData(STORAGE_NAMES.CACHE);
-      this.cache = storedCache || { ...DEFAULT_CACHE };
-    } catch (error) {
-      console.error("加载缓存失败，使用空缓存:", error);
-      this.cache = { ...DEFAULT_CACHE };
-    }
-  }
-
-  /**
    * 保存配置数据 (私有，由具体的更新方法调用)
    */
   private async saveConfig(): Promise<void> {
@@ -104,15 +86,13 @@ export class DataManager {
   }
 
   /**
-   * 保存缓存数据
+   * 合并分组数据，确保新字段有默认值
    */
-  async saveCache(): Promise<void> {
-    try {
-      await this.plugin.saveData(STORAGE_NAMES.CACHE, this.cache);
-    } catch (error) {
-      console.error("保存缓存失败:", error);
-      throw error;
-    }
+  private mergeGroups(storedGroups: any[]): any[] {
+    return storedGroups.map((group) => ({
+      ...DEFAULT_CONFIG.groups[0], // 使用第一个默认分组作为模板
+      ...group,
+    }));
   }
 
   /**
@@ -143,6 +123,8 @@ export class DataManager {
     await this.saveConfig();
   }
 
+  // ==================== 分组管理 ====================
+
   /**
    * 获取分组配置
    */
@@ -165,7 +147,7 @@ export class DataManager {
   }
 
   /**
-   * 获取所有启用了“自动优先级调整”的分组
+   * 获取所有启用了"自动优先级调整"的分组
    */
   getPriorityEnabledGroups(): GroupConfig[] {
     return this.getEnabledGroups().filter((group) => group.priorityEnabled);
@@ -199,6 +181,8 @@ export class DataManager {
     this.config.groups = this.config.groups.filter((g) => g.id !== groupId);
     await this.saveConfig();
   }
+
+  // ==================== 分组类别管理 ====================
 
   /**
    * 获取分组类别
@@ -243,6 +227,8 @@ export class DataManager {
     );
     await this.saveConfig();
   }
+
+  // ==================== 全局设置管理 ====================
 
   /**
    * 获取全局设置
@@ -297,6 +283,33 @@ export class DataManager {
     await this.saveConfig();
   }
 
+  // ==================== 缓存管理 ====================
+
+  /**
+   * 加载缓存数据
+   */
+  private async loadCache(): Promise<void> {
+    try {
+      const storedCache = await this.plugin.loadData(STORAGE_NAMES.CACHE);
+      this.cache = storedCache || { ...DEFAULT_CACHE };
+    } catch (error) {
+      console.error("加载缓存失败，使用空缓存:", error);
+      this.cache = { ...DEFAULT_CACHE };
+    }
+  }
+
+  /**
+   * 保存缓存数据
+   */
+  async saveCache(): Promise<void> {
+    try {
+      await this.plugin.saveData(STORAGE_NAMES.CACHE, this.cache);
+    } catch (error) {
+      console.error("保存缓存失败:", error);
+      throw error;
+    }
+  }
+
   /**
    * 获取缓存数据
    */
@@ -311,6 +324,18 @@ export class DataManager {
     groupId: string
   ): { blockIds: string[]; timestamp: number } | null {
     return this.cache[groupId] || null;
+  }
+
+  /**
+   * 检查缓存是否有效（基于配置中的 cacheUpdateInterval）
+   */
+  isCacheValid(groupId: string): boolean {
+    const cache = this.cache[groupId];
+    if (!cache) {
+      return false;
+    }
+    const maxAgeMs = this.config.cacheUpdateInterval * 60 * 1000;
+    return Date.now() - cache.timestamp < maxAgeMs;
   }
 
   /**
@@ -343,28 +368,6 @@ export class DataManager {
   }
 
   /**
-   * 清除所有分组和类别（用于卸载）
-   */
-  async clearGroupsAndCategories(): Promise<void> {
-    this.config.groups = [];
-    this.config.groupCategories = [];
-    await this.saveConfig();
-  }
-
-  /**
-   * --- MODIFIED ---
-   * 检查缓存是否有效（基于配置中的 cacheUpdateInterval）
-   */
-  isCacheValid(groupId: string): boolean {
-    const cache = this.cache[groupId];
-    if (!cache) {
-      return false;
-    }
-    const maxAgeMs = this.config.cacheUpdateInterval * 60 * 1000;
-    return Date.now() - cache.timestamp < maxAgeMs;
-  }
-
-  /**
    * 清理过期缓存
    */
   async cleanupExpiredCache(
@@ -384,6 +387,39 @@ export class DataManager {
       await this.saveCache();
     }
   }
+
+  // ==================== 查询执行 ====================
+
+  /**
+   * 执行查询并缓存结果
+   */
+  async executeAndCacheQuery(
+    group: any,
+    forceUpdate: boolean = false
+  ): Promise<string[]> {
+    if (!forceUpdate && this.isCacheValid(group.id)) {
+      const cached = this.getGroupCache(group.id);
+      if (cached) {
+        return cached.blockIds;
+      }
+    }
+
+    try {
+      const sqlResult = await CardUtils.paginatedSQLQuery(
+        group.sqlQuery,
+        100,
+        100
+      );
+      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
+      await this.updateGroupCache(group.id, blockIds);
+      return blockIds;
+    } catch (error) {
+      console.error(`分组 ${group.name} 查询失败:`, error);
+      return [];
+    }
+  }
+
+  // ==================== 工具方法 ====================
 
   /**
    * 生成新的分组ID
@@ -415,6 +451,17 @@ export class DataManager {
       id: this.generateId(),
       name: "新组别",
     };
+  }
+
+  // ==================== 数据清理 ====================
+
+  /**
+   * 清除所有分组和类别（用于卸载）
+   */
+  async clearGroupsAndCategories(): Promise<void> {
+    this.config.groups = [];
+    this.config.groupCategories = [];
+    await this.saveConfig();
   }
 
   /**

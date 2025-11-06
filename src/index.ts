@@ -35,13 +35,6 @@ export default class PluginSample extends Plugin {
 
     await this.preloadGroupData(true);
     this.startScheduledTasks();
-
-    const result = await fetchSyncPost("/api/riff/getRiffCards", {
-      id: "20230218211946-2kw8jgx",
-      page: 1,
-      pageSize: 5,
-    });
-    console.log("测试getRiffCards请求结果:", result);
   }
 
   onLayoutReady() {
@@ -189,36 +182,10 @@ export default class PluginSample extends Plugin {
     const groups = this.dataManager.getEnabledGroups();
     for (const group of groups) {
       try {
-        await this.executeAndCacheQuery(group, forceUpdate);
+        await this.dataManager.executeAndCacheQuery(group, forceUpdate);
       } catch (error) {
         console.error(`预加载分组 "${group.name}" 失败:`, error);
       }
-    }
-  }
-
-  private async executeAndCacheQuery(
-    group: any,
-    forceUpdate: boolean = false
-  ): Promise<string[]> {
-    if (!forceUpdate && this.dataManager.isCacheValid(group.id)) {
-      const cached = this.dataManager.getGroupCache(group.id);
-      if (cached) {
-        return cached.blockIds;
-      }
-    }
-
-    try {
-      const sqlResult = await CardUtils.paginatedSQLQuery(
-        group.sqlQuery,
-        100,
-        100
-      );
-      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-      await this.dataManager.updateGroupCache(group.id, blockIds);
-      return blockIds;
-    } catch (error) {
-      console.error(`分组 ${group.name} 查询失败:`, error);
-      return [];
     }
   }
 
@@ -264,7 +231,11 @@ export default class PluginSample extends Plugin {
         return;
       }
 
-      const blockIds = await this.executeAndCacheQuery(group, false);
+      // 使用 DataManager 的 executeAndCacheQuery 方法
+      const blockIds = await this.dataManager.executeAndCacheQuery(
+        group,
+        false
+      );
       await this.openGroupRiffCards(blockIds, group.name);
     } catch (error) {
       console.error(`创建分组 ${groupId} 的闪卡时发生错误:`, error);
@@ -312,11 +283,5 @@ export default class PluginSample extends Plugin {
         },
       },
     });
-  }
-}
-
-declare global {
-  interface Window {
-    tomato_zZmqus5PtYRi: any;
   }
 }
