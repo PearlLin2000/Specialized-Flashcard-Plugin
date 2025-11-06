@@ -1,15 +1,17 @@
+// utils.ts
 import { fetchSyncPost, showMessage } from "siyuan";
 
-/**
- * 卡包ID类：先写在这里。
- */
+// ============== 1. 常量定义 ==============
 
+/**
+ * 卡包ID枚举
+ */
 export enum DeckId {
   DEFAULT = "20230218211946-2kw8jgx",
   TEMPORARY = "20251103121413-a4s0bfv",
 }
 
-// ============== 1. API Wrappers ==============
+// ============== 2. API 封装函数 ==============
 
 /**
  * 检查块是否具有闪卡属性
@@ -175,227 +177,7 @@ export async function postponeCards(cards: any[], days: number): Promise<void> {
   }
 }
 
-// ============== 5. 文档流的链接构建与调用 ==============
-
-//文档流的链接构建
-
-function buildRuleURL(ruleType, ruleInput, title = null) {
-  // 参数验证
-  if (!ruleType || ruleInput === undefined || ruleInput === null) {
-    throw new Error("ruleType 和 ruleInput 都是必需参数");
-  }
-
-  if (!isValidRuleType(ruleType)) {
-    throw new Error(`无效的规则类型: ${ruleType}`);
-  }
-
-  const DOCS_FLOW_BASE_URL = "siyuan://plugins/sy-docs-flow/open-rule";
-
-  // 构建查询参数
-  const params = new URLSearchParams({
-    ruleType: ruleType,
-    ruleInput: preprocessInput(ruleType, ruleInput),
-  });
-
-  // 添加可选的 title 参数，URLSearchParams 会自动处理编码
-  if (title !== null && title !== undefined) {
-    params.append("ruleTitle", String(title));
-  }
-
-  // 返回完整 URL
-  return `${DOCS_FLOW_BASE_URL}?${params.toString()}`;
-}
-
-function isValidRuleType(ruleType) {
-  const validTypes = [
-    "ChildDocument",
-    "SQL",
-    "IdList",
-    "DocBacklinks",
-    "DocBackmentions",
-    "OffspringDocument",
-    "BlockBacklinks",
-    "JS",
-    "DailyNote",
-  ];
-  return validTypes.includes(ruleType);
-}
-
-function preprocessInput(ruleType: any, input: any) {
-  switch (ruleType) {
-    case "IdList":
-      return processIdListInput(input);
-    case "SQL":
-      return processSQLInput(input);
-    case "ChildDocument":
-    case "OffspringDocument":
-    case "DocBacklinks":
-    case "DocBackmentions":
-    case "BlockBacklinks":
-    case "DailyNote":
-      return processSingleIdInput(input);
-    case "JS":
-      return processJavaScriptInput(input);
-    default:
-      return String(input);
-  }
-}
-
-function processIdListInput(input: {
-  join: (arg0: string) => any;
-  split: (arg0: RegExp) => any[];
-}) {
-  if (Array.isArray(input)) {
-    return input.join(",");
-  } else if (typeof input === "string") {
-    return input
-      .split(/[\s,，]+/)
-      .filter((id) => id.trim())
-      .join(",");
-  }
-  return String(input);
-}
-
-function processSQLInput(input) {
-  if (typeof input !== "string") {
-    throw new Error("SQL 规则的输入必须是字符串");
-  }
-  return input.trim();
-}
-
-function processSingleIdInput(input) {
-  if (Array.isArray(input) && input.length > 0) {
-    return String(input[0]);
-  }
-  return String(input);
-}
-
-function processJavaScriptInput(input) {
-  if (typeof input !== "string") {
-    throw new Error("JS 规则的输入必须是字符串代码");
-  }
-  return input;
-}
-
-/**
- * 在文档流中打开SQL查询
- */
-export function openSQLFlow(sql: string, title?: string) {
-  const url = buildRuleURL("SQL", sql, title);
-  window.open(url);
-}
-
-/**
- * 在文档流中打开ID列表查询
- * @param blockIds 块ID数组，支持单个或多个ID
- * @param title 可选的标题参数
- */
-export function openIdListFlow(blockIds: string[], title?: string) {
-  const url = buildRuleURL("IdList", blockIds, title);
-  window.open(url);
-}
-
-// 在 utils.ts 中添加分页查询工具函数
-export async function paginatedSQLQuery(
-  baseSQL: string,
-  pageSize: number = 100,
-  maxPages: number = 10
-): Promise<any[]> {
-  let allResults: any[] = [];
-  let page = 0;
-
-  //(`开始分页查询，每页${pageSize}条，最多${maxPages}页`);
-
-  while (page < maxPages) {
-    const offset = page * pageSize;
-
-    // 构建分页SQL - 处理原始SQL是否已有LIMIT的情况
-    let paginatedSQL = baseSQL;
-    if (baseSQL.toLowerCase().includes("limit")) {
-      // 如果原SQL已有LIMIT，替换为分页LIMIT
-      paginatedSQL = baseSQL.replace(
-        /limit\s+\d+/i,
-        `LIMIT ${pageSize} OFFSET ${offset}`
-      );
-    } else {
-      paginatedSQL = `${baseSQL} LIMIT ${pageSize} OFFSET ${offset}`;
-    }
-
-    try {
-      //(`查询第${page + 1}页, OFFSET: ${offset}`);
-
-      const result = await fetchSyncPost("/api/query/sql", {
-        stmt: paginatedSQL,
-      });
-
-      if (!result.data || result.data.length === 0) {
-        //(`第${page + 1}页无数据，查询结束`);
-        break;
-      }
-
-      allResults = allResults.concat(result.data);
-      //(`第${page + 1}页获取到${result.data.length}条数据`);
-
-      // 如果返回数量小于pageSize，说明已经是最后一页
-      if (result.data.length < pageSize) {
-        //(`最后一页数据不足${pageSize}条，查询结束`);
-        break;
-      }
-
-      // 添加延迟避免资源竞争
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      page++;
-    } catch (error) {
-      console.error(`分页查询第${page + 1}页失败:`, error);
-      // 当前页失败时继续尝试下一页
-      page++;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-  }
-
-  //(`分页查询完成，总共获取${allResults.length}条闪卡数据`);
-  return allResults;
-}
-// ============== 4. Card Review Interface ==============
-
-/**
- * 构建闪卡复习数据
- */
-export async function buildDueCardsData(
-  deckID: string,
-  blockIds: string[]
-): Promise<{
-  cards: any[];
-  unreviewedCount: number;
-  unreviewedNewCardCount: number;
-  unreviewedOldCardCount: number;
-} | null> {
-  try {
-    const duecardsResponse = await fetchSyncPost("/api/riff/getRiffDueCards", {
-      deckID: deckID,
-    });
-
-    const filteredCards = duecardsResponse.data.cards.filter((card: any) =>
-      blockIds.includes(card.blockID)
-    );
-
-    return {
-      cards: filteredCards,
-      unreviewedCount: filteredCards.length,
-      unreviewedNewCardCount: filteredCards.filter(
-        (card: any) => card.state === 0
-      ).length,
-      unreviewedOldCardCount: filteredCards.filter(
-        (card: any) => card.state !== 0
-      ).length,
-    };
-  } catch (error) {
-    console.error("构建闪卡复习数据失败:", error);
-    return null;
-  }
-}
-
-// ============== 2. Core Algorithm ==============
+// ============== 3. 核心算法函数 ==============
 
 /**
  * 根据条件查找具有闪卡属性的块
@@ -544,7 +326,166 @@ export async function recursiveFindCardBlocks(
   return result;
 }
 
-// ============== 3. Data Helpers ==============
+// ============== 4. 闪卡复习接口 ==============
+
+/**
+ * 构建闪卡复习数据
+ */
+export async function buildDueCardsData(
+  deckID: string,
+  blockIds: string[]
+): Promise<{
+  cards: any[];
+  unreviewedCount: number;
+  unreviewedNewCardCount: number;
+  unreviewedOldCardCount: number;
+} | null> {
+  try {
+    const duecardsResponse = await fetchSyncPost("/api/riff/getRiffDueCards", {
+      deckID: deckID,
+    });
+
+    const filteredCards = duecardsResponse.data.cards.filter((card: any) =>
+      blockIds.includes(card.blockID)
+    );
+
+    return {
+      cards: filteredCards,
+      unreviewedCount: filteredCards.length,
+      unreviewedNewCardCount: filteredCards.filter(
+        (card: any) => card.state === 0
+      ).length,
+      unreviewedOldCardCount: filteredCards.filter(
+        (card: any) => card.state !== 0
+      ).length,
+    };
+  } catch (error) {
+    console.error("构建闪卡复习数据失败:", error);
+    return null;
+  }
+}
+
+// ============== 5. 文档流相关函数 ==============
+
+// 文档流辅助函数
+function isValidRuleType(ruleType) {
+  const validTypes = [
+    "ChildDocument",
+    "SQL",
+    "IdList",
+    "DocBacklinks",
+    "DocBackmentions",
+    "OffspringDocument",
+    "BlockBacklinks",
+    "JS",
+    "DailyNote",
+  ];
+  return validTypes.includes(ruleType);
+}
+
+function preprocessInput(ruleType: any, input: any) {
+  switch (ruleType) {
+    case "IdList":
+      return processIdListInput(input);
+    case "SQL":
+      return processSQLInput(input);
+    case "ChildDocument":
+    case "OffspringDocument":
+    case "DocBacklinks":
+    case "DocBackmentions":
+    case "BlockBacklinks":
+    case "DailyNote":
+      return processSingleIdInput(input);
+    case "JS":
+      return processJavaScriptInput(input);
+    default:
+      return String(input);
+  }
+}
+
+function processIdListInput(input: {
+  join: (arg0: string) => any;
+  split: (arg0: RegExp) => any[];
+}) {
+  if (Array.isArray(input)) {
+    return input.join(",");
+  } else if (typeof input === "string") {
+    return input
+      .split(/[\s,，]+/)
+      .filter((id) => id.trim())
+      .join(",");
+  }
+  return String(input);
+}
+
+function processSQLInput(input) {
+  if (typeof input !== "string") {
+    throw new Error("SQL 规则的输入必须是字符串");
+  }
+  return input.trim();
+}
+
+function processSingleIdInput(input) {
+  if (Array.isArray(input) && input.length > 0) {
+    return String(input[0]);
+  }
+  return String(input);
+}
+
+function processJavaScriptInput(input) {
+  if (typeof input !== "string") {
+    throw new Error("JS 规则的输入必须是字符串代码");
+  }
+  return input;
+}
+
+//文档流的链接构建
+function buildRuleURL(ruleType, ruleInput, title = null) {
+  // 参数验证
+  if (!ruleType || ruleInput === undefined || ruleInput === null) {
+    throw new Error("ruleType 和 ruleInput 都是必需参数");
+  }
+
+  if (!isValidRuleType(ruleType)) {
+    throw new Error(`无效的规则类型: ${ruleType}`);
+  }
+
+  const DOCS_FLOW_BASE_URL = "siyuan://plugins/sy-docs-flow/open-rule";
+
+  // 构建查询参数
+  const params = new URLSearchParams({
+    ruleType: ruleType,
+    ruleInput: preprocessInput(ruleType, ruleInput),
+  });
+
+  // 添加可选的 title 参数，URLSearchParams 会自动处理编码
+  if (title !== null && title !== undefined) {
+    params.append("ruleTitle", String(title));
+  }
+
+  // 返回完整 URL
+  return `${DOCS_FLOW_BASE_URL}?${params.toString()}`;
+}
+
+/**
+ * 在文档流中打开SQL查询
+ */
+export function openSQLFlow(sql: string, title?: string) {
+  const url = buildRuleURL("SQL", sql, title);
+  window.open(url);
+}
+
+/**
+ * 在文档流中打开ID列表查询
+ * @param blockIds 块ID数组，支持单个或多个ID
+ * @param title 可选的标题参数
+ */
+export function openIdListFlow(blockIds: string[], title?: string) {
+  const url = buildRuleURL("IdList", blockIds, title);
+  window.open(url);
+}
+
+// ============== 6. 数据辅助函数 ==============
 
 /**
  * 获取今日日期字符串
@@ -590,6 +531,74 @@ export function filterPureTodayCards(cards: any[]): any[] {
   return cards.filter((card) => isTodayCard(card, todayString));
 }
 
+// ============== 7. 分页查询工具 ==============
+
+/**
+ * 分页SQL查询工具函数
+ */
+export async function paginatedSQLQuery(
+  baseSQL: string,
+  pageSize: number = 100,
+  maxPages: number = 10
+): Promise<any[]> {
+  let allResults: any[] = [];
+  let page = 0;
+
+  //(`开始分页查询，每页${pageSize}条，最多${maxPages}页`);
+
+  while (page < maxPages) {
+    const offset = page * pageSize;
+
+    // 构建分页SQL - 处理原始SQL是否已有LIMIT的情况
+    let paginatedSQL = baseSQL;
+    if (baseSQL.toLowerCase().includes("limit")) {
+      // 如果原SQL已有LIMIT，替换为分页LIMIT
+      paginatedSQL = baseSQL.replace(
+        /limit\s+\d+/i,
+        `LIMIT ${pageSize} OFFSET ${offset}`
+      );
+    } else {
+      paginatedSQL = `${baseSQL} LIMIT ${pageSize} OFFSET ${offset}`;
+    }
+
+    try {
+      //(`查询第${page + 1}页, OFFSET: ${offset}`);
+
+      const result = await fetchSyncPost("/api/query/sql", {
+        stmt: paginatedSQL,
+      });
+
+      if (!result.data || result.data.length === 0) {
+        //(`第${page + 1}页无数据，查询结束`);
+        break;
+      }
+
+      allResults = allResults.concat(result.data);
+      //(`第${page + 1}页获取到${result.data.length}条数据`);
+
+      // 如果返回数量小于pageSize，说明已经是最后一页
+      if (result.data.length < pageSize) {
+        //(`最后一页数据不足${pageSize}条，查询结束`);
+        break;
+      }
+
+      // 添加延迟避免资源竞争
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      page++;
+    } catch (error) {
+      console.error(`分页查询第${page + 1}页失败:`, error);
+      // 当前页失败时继续尝试下一页
+      page++;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  //(`分页查询完成，总共获取${allResults.length}条闪卡数据`);
+  return allResults;
+}
+
+// ============== 8. 牌组管理函数 ==============
+
 /**
  * 重置牌组中卡片的学习进度
  * @param deckID 卡片组ID
@@ -629,7 +638,7 @@ export async function resetEntireDeck(deckID: string): Promise<any> {
   return resetRiffDeck(deckID, []);
 }
 
-// 闪卡操作函数封装
+// 闪卡操作辅助函数
 async function getRiffCards(deckID, page = 1, pageSize = 100) {
   const response = await fetchSyncPost("/api/riff/getRiffCards", {
     id: deckID,
