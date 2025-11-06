@@ -13,6 +13,8 @@ export enum DeckId {
 
 // ============== 2. API 封装函数 ==============
 
+// ============== 2. API 封装函数 ==============
+
 /**
  * 检查块是否具有闪卡属性
  */
@@ -20,10 +22,8 @@ export async function checkBlockHasCardAttribute(
   blockId: string
 ): Promise<{ blockId: string; hasAttribute: boolean }> {
   const attributeQuery = `SELECT 1 FROM attributes WHERE block_id = '${blockId}' AND name = 'custom-riff-decks' LIMIT 1`;
-  const result = await fetchSyncPost("/api/query/sql", {
-    stmt: attributeQuery,
-  });
-  return { blockId, hasAttribute: result?.data?.length > 0 };
+  const result = await sql(attributeQuery);
+  return { blockId, hasAttribute: result?.length > 0 };
 }
 
 /**
@@ -33,10 +33,8 @@ export async function getParentBlocks(blockIds: string[]): Promise<string[]> {
   if (blockIds.length === 0) return [];
   const idList = blockIds.map((id) => `'${id}'`).join(",");
   const parentQuery = `SELECT parent_id FROM blocks WHERE id IN (${idList}) AND parent_id IS NOT NULL`;
-  const result = await fetchSyncPost("/api/query/sql", { stmt: parentQuery });
-  return result.data
-    .map((block: any) => block.parent_id)
-    .filter((id: string) => id);
+  const result = await sql(parentQuery);
+  return result.map((block: any) => block.parent_id).filter((id: string) => id);
 }
 
 /**
@@ -52,17 +50,14 @@ export async function getRiffDueCards(
   unreviewedOldCardCount: number;
 } | null> {
   try {
-    const result = await fetchSyncPost("/api/riff/getRiffDueCards", {
-      deckID,
-      reviewedCardIDs,
-    });
+    const result = await getRiffDueCards(deckID, reviewedCardIDs);
 
-    if (result.code !== 0) {
-      console.error("获取到期闪卡失败:", result.msg);
+    if (!result) {
+      console.error("获取到期闪卡失败");
       return null;
     }
 
-    return result.data;
+    return result;
   } catch (error) {
     console.error("调用getRiffDueCards API失败:", error);
     return null;
@@ -79,17 +74,14 @@ export async function addRiffCards(
   if (blockIDs.length === 0) return null;
 
   try {
-    const result = await fetchSyncPost("/api/riff/addRiffCards", {
-      deckID,
-      blockIDs,
-    });
+    const result = await addRiffCards(deckID, blockIDs);
 
-    if (result.code !== 0) {
-      console.error("添加闪卡失败:", result.msg);
+    if (!result) {
+      console.error("添加闪卡失败");
       return null;
     }
 
-    return result.data;
+    return result;
   } catch (error) {
     console.error("调用addRiffCards API失败:", error);
     return null;
@@ -120,16 +112,14 @@ export async function getRiffCardsByBlockIds(
   if (blockIds.length === 0) return [];
 
   try {
-    const result = await fetchSyncPost("/api/riff/getRiffCardsByBlockIDs", {
-      blockIDs: blockIds,
-    });
-    //输出的闪卡数据结构需要测试。也许不符合标准。
-    if (result.code !== 0) {
-      console.error("内置API获取闪卡失败:", result.msg);
+    const result = await getRiffCardsByBlockIDs(blockIds);
+
+    if (!result) {
+      console.error("内置API获取闪卡失败");
       return [];
     }
 
-    return result.data.blocks || [];
+    return result.blocks || [];
   } catch (error) {
     console.error("调用getRiffCardsByBlockIDs API失败:", error);
     return [];

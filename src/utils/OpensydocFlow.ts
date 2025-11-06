@@ -1,4 +1,4 @@
-// 文档流相关工具函数
+// 文档流相关工具函数：开启触发依赖于文档流插件，见：https://github.com/frostime/sy-docs-flow
 
 /**
  * 构建文档流规则URL
