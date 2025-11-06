@@ -1,6 +1,6 @@
 // AutomationService.ts
 import { DataManager } from "../DataManager/DataManager";
-import * as CardUtils from "../utils";
+import * as CardUtils from "../utils/index";
 
 export class AutomationService {
   constructor(

@@ -11,7 +11,7 @@ import {
   GroupConfig,
   GroupCategory,
 } from "../types/data";
-import * as CardUtils from "../utils";
+import * as CardUtils from "../utils/index";
 
 /**
  * 卡包ID类

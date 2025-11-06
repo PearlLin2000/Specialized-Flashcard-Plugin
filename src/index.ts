@@ -11,7 +11,7 @@ import {
 } from "siyuan";
 import GroupManager from "./GroupManager/GroupManager.svelte";
 import { DataManager } from "./DataManager/DataManager";
-import * as CardUtils from "./utils";
+import * as CardUtils from "./utils/index";
 import { GroupActionService } from "./services/GroupActionService";
 import { AutomationService } from "./services/AutomationService";
 import { MenuService } from "./services/MenuService";

@@ -223,27 +223,17 @@ export async function recursiveFindCardBlocks(
   const foundBlocks = new Set<string>();
   const batchSize = 30; // 新增批次大小参数
 
-  /*(
-    `开始递归查找，初始块数: ${startingBlocks.length}, 批次大小: ${batchSize}, 最大深度: ${maxDepth}`
-  );*/
-
   const processBatch = async (
     blockIds: string[],
     depth: number
   ): Promise<void> => {
     if (depth >= maxDepth || blockIds.length === 0) {
-      //(`递归深度 ${depth} 达到限制或无可处理块，停止递归`);
       return;
     }
-
-    //(`深度 ${depth} 处理 ${blockIds.length} 个块`);
 
     // 分批处理属性检查
     for (let i = 0; i < blockIds.length; i += batchSize) {
       const batch = blockIds.slice(i, i + batchSize);
-      /*(
-        `处理批次 ${Math.floor(i / batchSize) + 1}, 大小: ${batch.length}`
-      );*/
 
       try {
         const attributeResults = await Promise.all(
@@ -255,12 +245,6 @@ export async function recursiveFindCardBlocks(
           .map(({ blockId }) => blockId);
 
         foundInBatch.forEach((blockId) => foundBlocks.add(blockId));
-
-        /*(
-          `批次 ${Math.floor(i / batchSize) + 1} 发现 ${
-            foundInBatch.length
-          } 个闪卡块`
-        );*/
 
         // 添加请求延迟避免资源竞争
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -274,30 +258,17 @@ export async function recursiveFindCardBlocks(
       (blockId) => !foundBlocks.has(blockId)
     );
 
-    /*(
-      `深度 ${depth} 有 ${blocksToContinue.length} 个块需要继续向上查找`
-    );*/
-
     if (blocksToContinue.length === 0) return;
 
     // 分批获取父块
     const parentIds: string[] = [];
     for (let i = 0; i < blocksToContinue.length; i += batchSize) {
       const batch = blocksToContinue.slice(i, i + batchSize);
-      /*(
-        `获取父块批次 ${Math.floor(i / batchSize) + 1}, 大小: ${batch.length}`
-      );*/
 
       try {
         const batchParentIds = await getParentBlocks(batch);
         const validParentIds = batchParentIds.filter((id) => id);
         parentIds.push(...validParentIds);
-
-        /*(
-          `批次 ${Math.floor(i / batchSize) + 1} 获取到 ${
-            validParentIds.length
-          } 个有效父块`
-        );*/
 
         // 添加请求延迟避免资源竞争
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -311,7 +282,6 @@ export async function recursiveFindCardBlocks(
 
     // 去重父块ID
     const uniqueParentIds = [...new Set(parentIds)];
-    //(`去重后得到 ${uniqueParentIds.length} 个唯一父块`);
 
     if (uniqueParentIds.length > 0) {
       await processBatch(uniqueParentIds, depth + 1);
@@ -322,7 +292,6 @@ export async function recursiveFindCardBlocks(
   await processBatch(startingBlockIds, 0);
 
   const result = Array.from(foundBlocks);
-  //(`递归查找完成，总共发现 ${result.length} 个闪卡块`);
   return result;
 }
 
@@ -365,127 +334,7 @@ export async function buildDueCardsData(
   }
 }
 
-// ============== 5. 文档流相关函数 ==============
-
-// 文档流辅助函数
-function isValidRuleType(ruleType) {
-  const validTypes = [
-    "ChildDocument",
-    "SQL",
-    "IdList",
-    "DocBacklinks",
-    "DocBackmentions",
-    "OffspringDocument",
-    "BlockBacklinks",
-    "JS",
-    "DailyNote",
-  ];
-  return validTypes.includes(ruleType);
-}
-
-function preprocessInput(ruleType: any, input: any) {
-  switch (ruleType) {
-    case "IdList":
-      return processIdListInput(input);
-    case "SQL":
-      return processSQLInput(input);
-    case "ChildDocument":
-    case "OffspringDocument":
-    case "DocBacklinks":
-    case "DocBackmentions":
-    case "BlockBacklinks":
-    case "DailyNote":
-      return processSingleIdInput(input);
-    case "JS":
-      return processJavaScriptInput(input);
-    default:
-      return String(input);
-  }
-}
-
-function processIdListInput(input: {
-  join: (arg0: string) => any;
-  split: (arg0: RegExp) => any[];
-}) {
-  if (Array.isArray(input)) {
-    return input.join(",");
-  } else if (typeof input === "string") {
-    return input
-      .split(/[\s,，]+/)
-      .filter((id) => id.trim())
-      .join(",");
-  }
-  return String(input);
-}
-
-function processSQLInput(input) {
-  if (typeof input !== "string") {
-    throw new Error("SQL 规则的输入必须是字符串");
-  }
-  return input.trim();
-}
-
-function processSingleIdInput(input) {
-  if (Array.isArray(input) && input.length > 0) {
-    return String(input[0]);
-  }
-  return String(input);
-}
-
-function processJavaScriptInput(input) {
-  if (typeof input !== "string") {
-    throw new Error("JS 规则的输入必须是字符串代码");
-  }
-  return input;
-}
-
-//文档流的链接构建
-function buildRuleURL(ruleType, ruleInput, title = null) {
-  // 参数验证
-  if (!ruleType || ruleInput === undefined || ruleInput === null) {
-    throw new Error("ruleType 和 ruleInput 都是必需参数");
-  }
-
-  if (!isValidRuleType(ruleType)) {
-    throw new Error(`无效的规则类型: ${ruleType}`);
-  }
-
-  const DOCS_FLOW_BASE_URL = "siyuan://plugins/sy-docs-flow/open-rule";
-
-  // 构建查询参数
-  const params = new URLSearchParams({
-    ruleType: ruleType,
-    ruleInput: preprocessInput(ruleType, ruleInput),
-  });
-
-  // 添加可选的 title 参数，URLSearchParams 会自动处理编码
-  if (title !== null && title !== undefined) {
-    params.append("ruleTitle", String(title));
-  }
-
-  // 返回完整 URL
-  return `${DOCS_FLOW_BASE_URL}?${params.toString()}`;
-}
-
-/**
- * 在文档流中打开SQL查询
- */
-export function openSQLFlow(sql: string, title?: string) {
-  const url = buildRuleURL("SQL", sql, title);
-  window.open(url);
-}
-
-/**
- * 在文档流中打开ID列表查询
- * @param blockIds 块ID数组，支持单个或多个ID
- * @param title 可选的标题参数
- */
-export function openIdListFlow(blockIds: string[], title?: string) {
-  const url = buildRuleURL("IdList", blockIds, title);
-  window.open(url);
-}
-
-// ============== 6. 数据辅助函数 ==============
+// ============== 5. 数据辅助函数 ==============
 
 /**
  * 获取今日日期字符串
@@ -531,7 +380,7 @@ export function filterPureTodayCards(cards: any[]): any[] {
   return cards.filter((card) => isTodayCard(card, todayString));
 }
 
-// ============== 7. 分页查询工具 ==============
+// ============== 6. 分页查询工具 ==============
 
 /**
  * 分页SQL查询工具函数
@@ -543,8 +392,6 @@ export async function paginatedSQLQuery(
 ): Promise<any[]> {
   let allResults: any[] = [];
   let page = 0;
-
-  //(`开始分页查询，每页${pageSize}条，最多${maxPages}页`);
 
   while (page < maxPages) {
     const offset = page * pageSize;
@@ -562,23 +409,18 @@ export async function paginatedSQLQuery(
     }
 
     try {
-      //(`查询第${page + 1}页, OFFSET: ${offset}`);
-
       const result = await fetchSyncPost("/api/query/sql", {
         stmt: paginatedSQL,
       });
 
       if (!result.data || result.data.length === 0) {
-        //(`第${page + 1}页无数据，查询结束`);
         break;
       }
 
       allResults = allResults.concat(result.data);
-      //(`第${page + 1}页获取到${result.data.length}条数据`);
 
       // 如果返回数量小于pageSize，说明已经是最后一页
       if (result.data.length < pageSize) {
-        //(`最后一页数据不足${pageSize}条，查询结束`);
         break;
       }
 
@@ -593,11 +435,10 @@ export async function paginatedSQLQuery(
     }
   }
 
-  //(`分页查询完成，总共获取${allResults.length}条闪卡数据`);
   return allResults;
 }
 
-// ============== 8. 牌组管理函数 ==============
+// ============== 7. 牌组管理函数 ==============
 
 /**
  * 重置牌组中卡片的学习进度
@@ -638,8 +479,8 @@ export async function resetEntireDeck(deckID: string): Promise<any> {
   return resetRiffDeck(deckID, []);
 }
 
-// 闪卡操作辅助函数
-async function getRiffCards(deckID, page = 1, pageSize = 100) {
+// 闪卡操作辅助函数（内部使用）
+async function getRiffCards(deckID: any, page: any = 1, pageSize: any = 100) {
   const response = await fetchSyncPost("/api/riff/getRiffCards", {
     id: deckID,
     page: page,
@@ -653,7 +494,7 @@ async function getRiffCards(deckID, page = 1, pageSize = 100) {
   }
 }
 
-async function removeRiffCards(deckID, blockIDs) {
+async function removeRiffCards(deckID: any, blockIDs: any) {
   const response = await fetchSyncPost("/api/riff/removeRiffCards", {
     deckID: deckID,
     blockIDs: blockIDs,
@@ -699,7 +540,7 @@ async function batchCreateCards(blockIds: string[]) {
   }
 }
 
-async function clearDeck(deckID) {
+async function clearDeck(deckID: any) {
   try {
     let allBlockIDs = [];
     let page = 1;
@@ -714,7 +555,7 @@ async function clearDeck(deckID) {
         break;
       }
 
-      const pageBlockIDs = data.blocks.map((card) => card.id);
+      const pageBlockIDs = data.blocks.map((card: any) => card.id);
       allBlockIDs = allBlockIDs.concat(pageBlockIDs);
 
       console.log(`第 ${page} 页获取到 ${pageBlockIDs.length} 张卡片`);
