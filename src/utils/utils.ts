@@ -102,6 +102,11 @@ export async function getRiffCardsByBlockIds(
         await window.tomato_zZmqus5PtYRi.siyuan.getRiffCardsByBlockIDs(
           blockIds
         );
+      console.log("使用番茄API获取的CardMap:");
+      console.log(cardMap);
+      const result = await riffAPI.getRiffCardsByBlockIDs(blockIds);
+      console.log("使用内置API获取的result:");
+      console.log(result);
       return [...cardMap.values()].flat();
     } catch (error) {
       console.error("番茄API获取闪卡失败，尝试使用内置API:", error);

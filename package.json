@@ -1,6 +1,6 @@
 {
   "name": "Specialized-Flashcard-Plugin",
-  "version": "0.2.6",
+  "version": "0.2.8",
   "type": "module",
   "description": "Based on SQL retrieval, implement review, viewing, and batch priority setting for special flashcards(groupable).",
   "repository": "",

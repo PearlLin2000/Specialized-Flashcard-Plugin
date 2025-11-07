@@ -30,7 +30,7 @@ export default class PluginSample extends Plugin {
   async onload() {
     this.dataManager = new DataManager(this);
     await this.dataManager.initialize();
-    this.groupActionService = new GroupActionService();
+    this.groupActionService = new GroupActionService(this.dataManager);
     this.automationService = new AutomationService(this.dataManager, CardUtils);
 
     const frontEnd = getFrontend();
@@ -62,6 +62,13 @@ export default class PluginSample extends Plugin {
 
     await this.preloadGroupData(true);
     this.startScheduledTasks();
+    console.log(
+      "看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里"
+    );
+    await CardUtils.getRiffCardsByBlockIds([
+      "20251107175026-xckq0bh",
+      "20251107174945-1jx4mwg",
+    ]);
 
     /*/ 测试区域
     const avID = "20250920100057-khqfv5y";
@@ -99,6 +106,8 @@ export default class PluginSample extends Plugin {
 
         // 使用 MenuService 构建菜单
         this.menuService.buildMainMenu(rect);
+        //const groups = this.dataManager.getEnabledGroups();
+        //this.menuService.buildGroupContextMenu(groups[0], rect);
       },
     });
   }
