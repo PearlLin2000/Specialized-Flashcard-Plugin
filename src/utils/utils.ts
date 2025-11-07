@@ -1,5 +1,5 @@
 // utils.ts
-import { fetchSyncPost, showMessage } from "siyuan";
+//import { fetchSyncPost, showMessage } from "siyuan";
 import * as sqlAPI from "./API/apiSiyuanSQL";
 import * as riffAPI from "./API/apiSiyuanCard";
 
@@ -14,6 +14,38 @@ export enum DeckId {
 }
 
 // ============== 2. API 封装函数 ==============
+
+/**
+ * 获取指定卡组中的所有闪卡
+ * @param deckId 卡组ID
+ * @param pageSize 每页大小，默认1000
+ * @returns 闪卡数组
+ */
+export async function getAllRiffCardsByDeckID(
+  deckId: string,
+  pageSize = 1000
+): Promise<any[]> {
+  const allCards: any[] = [];
+
+  for (let page = 1; ; page++) {
+    const ret = await getRiffCards(deckId, page, pageSize);
+
+    // 如果没有数据或数据为空，结束循环
+    if (!ret?.blocks || ret.blocks.length === 0) {
+      break;
+    }
+
+    // 直接添加所有卡片到结果数组
+    allCards.push(...ret.blocks);
+
+    // 如果已经获取了所有卡片，结束循环
+    if (page >= ret.pageCount) {
+      break;
+    }
+  }
+
+  return allCards;
+}
 
 /**
  * 检查块是否具有闪卡属性
@@ -367,8 +399,8 @@ export function filterPureTodayCards(cards: any[]): any[] {
  */
 export async function paginatedSQLQuery(
   baseSQL: string,
-  pageSize: number = 100,
-  maxPages: number = 10
+  pageSize: number = 500,
+  maxPages: number = 100
 ): Promise<any[]> {
   let allResults: any[] = [];
   let page = 0;

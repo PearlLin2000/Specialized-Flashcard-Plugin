@@ -62,22 +62,6 @@ export default class PluginSample extends Plugin {
 
     await this.preloadGroupData(true);
     this.startScheduledTasks();
-    console.log(
-      "看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里看这里"
-    );
-    await CardUtils.getRiffCardsByBlockIds([
-      "20251107175026-xckq0bh",
-      "20251107174945-1jx4mwg",
-    ]);
-
-    /*/ 测试区域
-    const avID = "20250920100057-khqfv5y";
-    console.log("avID:", avID);
-    const response = await fetchSyncPost("api/av/getAttributeViewKeys", {
-      avID: avID,
-    });
-    console.log("avID数据库视图响应:", response);
-    // 测试区域结束 */
   }
 
   onLayoutReady() {
