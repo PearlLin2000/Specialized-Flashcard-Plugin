@@ -88,33 +88,12 @@ export async function addRiffCards(
     return null;
   }
 }
-
 /**
- * 通过块ID获取对应的闪卡（优先使用番茄API，失败时使用内置API）
+ * 通过块ID获取对应的闪卡（使用内置API）
  */
 export async function getRiffCardsByBlockIds(
   blockIds: string[]
 ): Promise<any[]> {
-  // 优先使用番茄插件API
-  if (window.tomato_zZmqus5PtYRi?.siyuan?.getRiffCardsByBlockIDs) {
-    try {
-      const cardMap =
-        await window.tomato_zZmqus5PtYRi.siyuan.getRiffCardsByBlockIDs(
-          blockIds
-        );
-      console.log("使用番茄API获取的CardMap:");
-      console.log(cardMap);
-      const result = await riffAPI.getRiffCardsByBlockIDs(blockIds);
-      console.log("使用内置API获取的result:");
-      console.log(result);
-      return [...cardMap.values()].flat();
-    } catch (error) {
-      console.error("番茄API获取闪卡失败，尝试使用内置API:", error);
-      // 继续执行下面的备用方案
-    }
-  }
-
-  // 备用方案：使用内置API
   if (blockIds.length === 0) return [];
 
   try {
@@ -124,6 +103,9 @@ export async function getRiffCardsByBlockIds(
       console.error("内置API获取闪卡失败");
       return [];
     }
+
+    console.log("使用内置API获取的闪卡结果:");
+    console.log(result);
 
     return result.blocks || [];
   } catch (error) {
