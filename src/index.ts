@@ -184,11 +184,11 @@ export default class PluginSample extends Plugin {
 
   // ==================== 私有方法 - 数据管理 ====================
 
-  private async preloadGroupData(forceUpdate: boolean = false): Promise<void> {
+  private async preloadGroupData(forceUpdate: boolean = true): Promise<void> {
     const groups = this.dataManager.getEnabledGroups();
     for (const group of groups) {
       try {
-        await this.dataManager.executeAndCacheQuery(group, forceUpdate);
+        await this.dataManager.provideGroupCacheBlockIds(group, forceUpdate);
       } catch (error) {
         console.error(`预加载分组 "${group.name}" 失败:`, error);
       }

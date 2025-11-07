@@ -283,10 +283,8 @@ export class MenuService {
         return;
       }
 
-      const blockIds = await this.dependencies.dataManager.executeAndCacheQuery(
-        group,
-        false
-      );
+      const blockIds =
+        await this.dependencies.dataManager.provideGroupCacheBlockIds(group);
 
       if (blockIds.length === 0) {
         showMessage(`分组 "${group.name}" 没有找到可复习的卡片`);

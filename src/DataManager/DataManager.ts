@@ -388,22 +388,51 @@ export class DataManager {
     }
   }
 
+  // ==================== 缓存数据获取 ====================
+
+  /**
+   * 按组传递缓存数据
+   * @param groupId 分组ID
+   * @param requestType 请求类型：'blockIds' | 'timestamp' | 'cacheData'
+   * @returns 根据请求类型返回相应的数据
+   */
+  getGroupCacheByType(
+    groupId: string,
+    requestType: "blockIds" | "timestamp" | "cacheData"
+  ): string[] | number | { blockIds: string[]; timestamp: number } | null {
+    const cache = this.cache[groupId];
+
+    if (!cache) {
+      return null;
+    }
+
+    switch (requestType) {
+      case "blockIds":
+        return [...cache.blockIds]; // 返回副本避免外部修改
+
+      case "timestamp":
+        return cache.timestamp;
+
+      case "cacheData":
+        return {
+          blockIds: [...cache.blockIds],
+          timestamp: cache.timestamp,
+        };
+
+      default:
+        console.warn(`未知的请求类型: ${requestType}`);
+        return null;
+    }
+  }
+
   // ==================== 查询执行 ====================
 
   /**
-   * 执行查询并缓存结果
+   * 执行分组查询（不包含缓存逻辑）
+   * @param group 分组配置对象
+   * @returns 查询到的块ID数组
    */
-  async executeAndCacheQuery(
-    group: any,
-    forceUpdate: boolean = false
-  ): Promise<string[]> {
-    if (!forceUpdate && this.isCacheValid(group.id)) {
-      const cached = this.getGroupCache(group.id);
-      if (cached) {
-        return cached.blockIds;
-      }
-    }
-
+  async executeGroupQuery(group: any): Promise<string[]> {
     try {
       const sqlResult = await CardUtils.paginatedSQLQuery(
         group.sqlQuery,
@@ -411,7 +440,6 @@ export class DataManager {
         100
       );
       const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
-      await this.updateGroupCache(group.id, blockIds);
       return blockIds;
     } catch (error) {
       console.error(`分组 ${group.name} 查询失败:`, error);
@@ -419,6 +447,55 @@ export class DataManager {
     }
   }
 
+  /**
+   * 执行查询并缓存结果
+   */
+
+  // ==================== 分组数据获取 ====================
+
+  /**
+   * 提供分组块ID数据（支持强制更新和queryFirst配置）
+   * @param group 分组配置对象
+   * @param forceUpdate 是否强制更新缓存
+   * @returns 块ID数组
+   */
+  async provideGroupCacheBlockIds(
+    group: GroupConfig,
+    forceUpdate: boolean = false
+  ): Promise<string[]> {
+    try {
+      // 强制更新：一律执行查询并更新缓存
+      if (forceUpdate) {
+        const blockIds = await this.executeGroupQuery(group);
+        await this.updateGroupCache(group.id, blockIds);
+        return blockIds;
+      }
+
+      // 非强制更新：根据queryFirst配置决定行为
+      if (group.queryFirst) {
+        // queryFirst为true：执行查询、更新缓存，然后返回结果
+        const blockIds = await this.executeGroupQuery(group);
+        await this.updateGroupCache(group.id, blockIds);
+        return blockIds;
+      } else {
+        // queryFirst为false：使用缓存数据（如果缓存有效）
+        if (this.isCacheValid(group.id)) {
+          const cachedBlockIds = this.getGroupCacheByType(group.id, "blockIds");
+          if (cachedBlockIds && Array.isArray(cachedBlockIds)) {
+            return cachedBlockIds as string[];
+          }
+        }
+
+        // 缓存无效或不存在时，执行查询并更新缓存
+        const blockIds = await this.executeGroupQuery(group);
+        await this.updateGroupCache(group.id, blockIds);
+        return blockIds;
+      }
+    } catch (error) {
+      console.error(`获取分组 ${group.name} 数据失败:`, error);
+      return [];
+    }
+  }
   // ==================== 工具方法 ====================
 
   /**

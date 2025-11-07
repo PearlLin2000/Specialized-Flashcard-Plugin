@@ -11,7 +11,7 @@ export interface GroupConfig {
   priority: number;
   priorityEnabled: boolean;
   categoryId: string;
-  useCache: boolean; //  [新增] 是否优先使用缓存
+  queryFirst: false; //  [新增] 是否始终使用查询
 }
 
 /**
@@ -66,7 +66,7 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     priority: 50,
     priorityEnabled: true,
     categoryId: "default",
-    useCache: true, // [新增] 默认启用
+    queryFirst: false, // [新增] 默认启用
   },
   {
     id: "2",
@@ -77,7 +77,7 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     priority: 5,
     priorityEnabled: false,
     categoryId: "default",
-    useCache: true, // [新增] 默认启用
+    queryFirst: false, // [新增] 默认启用
   },
 ];
 
