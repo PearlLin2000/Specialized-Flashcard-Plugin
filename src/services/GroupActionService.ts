@@ -1,16 +1,20 @@
 // GroupActionService.ts
 import { showMessage } from "siyuan";
 import * as CardUtils from "../utils/index";
+import { DataManager } from "../DataManager/DataManager"; // 确保引入 DataManager
+import { GroupConfig } from "../types/data"; // 确保引入 GroupConfig 类型
 
 export class GroupActionService {
-  async handleBatchPriority(group: any): Promise<void> {
+  private dataManager: DataManager;
+  // 通过构造函数接收 DataManager 实例
+  constructor(dataManager: DataManager) {
+    this.dataManager = dataManager;
+  }
+
+  async handleBatchPriority(group: GroupConfig): Promise<void> {
     try {
-      const sqlResult = await CardUtils.paginatedSQLQuery(
-        group.sqlQuery,
-        100,
-        100
-      );
-      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
+      // [修改] 使用 dataManager 获取块ID，此函数内部处理了缓存和 queryFirst 逻辑
+      const blockIds = await this.dataManager.provideGroupCacheBlockIds(group);
 
       if (!blockIds || blockIds.length === 0) {
         showMessage(`分组 "${group.name}" 未找到匹配的块`);
@@ -41,14 +45,11 @@ export class GroupActionService {
     );
   }
 
-  async handleOpenInDocumentAllCards(group: any): Promise<void> {
+  async handleOpenInDocumentAllCards(group: GroupConfig): Promise<void> {
     try {
-      const sqlResult = await CardUtils.paginatedSQLQuery(
-        group.sqlQuery,
-        100,
-        100
-      );
-      const blockIds = await CardUtils.recursiveFindCardBlocks(sqlResult, 5);
+      // [修改] 使用 dataManager 获取块ID，此函数内部处理了缓存和 queryFirst 逻辑
+      //内部封装了向上传递函数的逻辑
+      const blockIds = await this.dataManager.provideGroupCacheBlockIds(group);
 
       if (!blockIds || blockIds.length === 0) {
         showMessage(`分组 "${group.name}" 未找到匹配的闪卡块`);

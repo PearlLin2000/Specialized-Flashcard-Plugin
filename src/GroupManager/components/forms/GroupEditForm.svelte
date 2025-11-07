@@ -47,7 +47,7 @@
 
 {#if editingGroup}
   <div class="config-form compact-form">
-    <!-- 第一行：SQL分组名称 + 启用分组 + 在文档流中打开按钮 -->
+    <!-- 第一行：SQL分组名称 + 启用分组 + 查询优先 + 在文档流中打开按钮 -->
     <div class="form-row form-row-with-button">
       <div class="form-field form-field-main-input">
         <label class="field-label" for="group-name-input">
@@ -65,6 +65,25 @@
           <input type="checkbox" bind:checked={editingGroup.enabled}>
           <span class="toggle-text">启用分组</span>
         </label>
+      </div>
+      <!-- ADDED - 查询优先开关 -->
+      <div class="form-field compact" style="flex: 0 0 auto;">
+        <label class="toggle-label small-text">
+          <input type="checkbox" bind:checked={editingGroup.queryFirst}>
+          <span class="toggle-text">查询优先</span>
+        </label>
+      </div>
+      <!-- ADDED - 查询优先帮助提示 -->
+      <div class="form-item-help">
+        <HelpTooltip>
+            <strong>查询优先：</strong>
+            <ul style="margin: 4px 0 0 18px; padding: 0; list-style-type: disc;">
+                <li>立刻能用上最新鲜的数据。</li>
+                <li>如果数据量大，需等待几秒钟的查询。</li>
+                <li>不建议同时开启过多，可能拖累思源本身的使用性能。</li>
+                <li>默认关闭。</li>
+            </ul>
+        </HelpTooltip>
       </div>
       <!-- MODIFIED - Updated on:click handler -->
       <button class="func-button open-in-document" on:click={handleOpenInDocumentSQL}>

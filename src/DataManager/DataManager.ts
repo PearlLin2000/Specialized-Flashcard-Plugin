@@ -515,8 +515,9 @@ export class DataManager {
       sqlQuery: "SELECT * FROM blocks WHERE",
       enabled: true,
       priority: 50,
-      priorityEnabled: true,
+      priorityEnabled: false,
       categoryId: categoryId,
+      queryFirst: false, // 默认禁用
     };
   }
 
