@@ -41,23 +41,16 @@ export class MenuService {
    */
   async executeMenuAction(action: MenuAction): Promise<void> {
     try {
-      // 添加空值检查
-      if (!action || !action.type) {
-        console.error("无效的菜单动作:", action);
-        return;
-      }
-
       switch (action.type) {
         case "OPEN_SETTING":
           await this.openSetting();
           break;
         case "CREATE_RIFF_CARDS":
-          if (action.groupId) {
-            await this.createRiffCardsByGroup(action.groupId);
-          }
+          await this.createRiffCardsByGroup(action.groupId!);
           break;
-        default:
-          console.warn("未知的菜单动作:", action);
+        case "SHOW_ALL_DUE_CARDS":
+          console.log("所有闪卡，留空位");
+          break;
       }
     } catch (error) {
       console.error("执行菜单动作失败:", error);
@@ -76,19 +69,15 @@ export class MenuService {
     menuItems.forEach((item) => {
       if (item.separatorBefore) {
         menu.addSeparator();
+        return;
       }
 
-      // 添加空值检查和类型保护
-      if (item.action && item.action.type) {
-        menu.addItem({
-          icon: item.icon,
-          label: item.label,
-          click: () => this.executeMenuAction(item.action!),
-          disabled: item.enabled === false,
-        });
-      } else {
-        console.warn("跳过无效的菜单项:", item);
-      }
+      menu.addItem({
+        icon: item.icon,
+        label: item.label,
+        click: () => this.executeMenuAction(item.action),
+        disabled: item.enabled === false,
+      });
     });
   }
 
@@ -101,19 +90,15 @@ export class MenuService {
     menuItems.forEach((item) => {
       if (item.separatorBefore) {
         menu.addSeparator();
+        return;
       }
 
-      // 添加空值检查和类型保护
-      if (item.action && item.action.type) {
-        menu.addItem({
-          icon: item.icon,
-          label: item.label,
-          click: () => this.executeMenuAction(item.action!),
-          disabled: item.enabled === false,
-        });
-      } else {
-        console.warn("跳过无效的菜单项:", item);
-      }
+      menu.addItem({
+        icon: item.icon,
+        label: item.label,
+        click: () => this.executeMenuAction(item.action),
+        disabled: item.enabled === false,
+      });
     });
   }
 
@@ -128,12 +113,16 @@ export class MenuService {
         label: "专项闪卡设置",
         action: { type: "OPEN_SETTING" },
       },
+      { separatorBefore: true },
+      {
+        icon: "iconRiffCard",
+        label: "到期：所有闪卡",
+        action: { type: "SHOW_ALL_DUE_CARDS" },
+      },
     ];
 
     // 添加分组菜单项
     if (groups.length > 0) {
-      items.push({ separatorBefore: true });
-
       groups.forEach((group) => {
         items.push({
           icon: "iconRiffCard",
@@ -146,7 +135,6 @@ export class MenuService {
         });
       });
     } else {
-      items.push({ separatorBefore: true });
       items.push({
         icon: "iconInfo",
         label: "暂无启用的分组 - 点击设置",
@@ -216,7 +204,6 @@ export class MenuService {
         width: "1000px",
         height: "650px",
         destroyCallback: () => {
-          // 配置更新回调
           if (this.dependencies.onConfigUpdate) {
             this.dependencies.onConfigUpdate();
           }
@@ -288,7 +275,6 @@ export class MenuService {
       }
 
       this.openRiffReviewTab(`${groupName}-专项闪卡`, cardsData);
-      //showMessage(`已打开 ${groupName} 的复习界面`);
     } catch (error) {
       console.error("打开闪卡复习界面时发生错误:", error);
       throw error;

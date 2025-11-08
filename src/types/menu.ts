@@ -1,10 +1,10 @@
 // src/types/menu.ts
+// src/types/menu.ts
 export interface MenuAction {
-  type: "OPEN_SETTING" | "CREATE_RIFF_CARDS";
-  // 移除: "BATCH_PRIORITY" | "OPEN_SQL" | "OPEN_ALL_CARDS"
+  type: "OPEN_SETTING" | "CREATE_RIFF_CARDS" | "SHOW_ALL_DUE_CARDS";
   groupId?: string;
   groupName?: string;
-  group?: any; // 这个属性现在只在 CREATE_RIFF_CARDS 动作中使用，可以保留
+  group?: any;
 }
 
 export interface MenuItemConfig {
