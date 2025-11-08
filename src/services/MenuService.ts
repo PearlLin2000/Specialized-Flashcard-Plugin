@@ -49,7 +49,7 @@ export class MenuService {
           await this.createRiffCardsByGroup(action.groupId!);
           break;
         case "SHOW_ALL_DUE_CARDS":
-          console.log("所有闪卡，留空位");
+          await this.showAllDueCards();
           break;
       }
     } catch (error) {
@@ -123,6 +123,7 @@ export class MenuService {
 
     // 添加分组菜单项
     if (groups.length > 0) {
+      items.push({ separatorBefore: true }); // 在到期闪卡和分组闪卡之间增加一条分割线
       groups.forEach((group) => {
         items.push({
           icon: "iconRiffCard",
@@ -252,6 +253,47 @@ export class MenuService {
     } catch (error) {
       console.error(`创建分组 ${groupId} 的闪卡时发生错误:`, error);
       showMessage(`创建闪卡失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 显示所有到期闪卡（带数量限制）
+   */
+  private async showAllDueCards(): Promise<void> {
+    const deckID = "20230218211946-2kw8jgx"; // 统一的默认卡组ID
+    const limit = 200; // 复习数量限制
+
+    try {
+      // 1. 调用 `getRiffDueCards` 获取所有到期闪卡
+      const duecardsResponse =
+        await this.dependencies.cardUtils.getRiffDueCards(deckID);
+
+      if (!duecardsResponse || duecardsResponse.cards.length === 0) {
+        showMessage("当前没有到期的闪卡。");
+        return;
+      }
+
+      // 2. 如果卡片数量超过限制，则截取前 limit 张
+      const limitedCards = duecardsResponse.cards.slice(0, limit);
+
+      // 3. 构建用于 openTab 的数据结构
+      const cardsData = {
+        cards: limitedCards,
+        unreviewedCount: limitedCards.length,
+        unreviewedNewCardCount: limitedCards.filter(
+          (card: any) => card.state === 0
+        ).length,
+        unreviewedOldCardCount: limitedCards.filter(
+          (card: any) => card.state !== 0
+        ).length,
+      };
+
+      // 4. 打开复习 Tab，标题可明确数量
+      const title = `到期闪卡 (前 ${limit} 张)`;
+      this.openRiffReviewTab(title, cardsData);
+    } catch (error) {
+      console.error("显示所有到期闪卡时发生错误:", error);
+      showMessage(`获取到期闪卡失败: ${error.message}`);
     }
   }
 
