@@ -52,7 +52,6 @@ export default class PluginSample extends Plugin {
     this.menuService = new MenuService({
       plugin: this,
       dataManager: this.dataManager,
-      groupActionService: this.groupActionService,
       cardUtils: CardUtils,
       isMobile: this.isMobile,
       onConfigUpdate: async () => {
@@ -63,7 +62,16 @@ export default class PluginSample extends Plugin {
     await this.preloadGroupData(true);
     this.startScheduledTasks();
 
-    // 测试区域
+    // 在实际使用中，通常这样使用：
+    if (await CardUtils.isSelfUseSwitchOn()) {
+      // 执行自用功能的相关逻辑
+      //console.log("自用功能已开启，执行专项闪卡操作");
+    } else {
+      // 开关关闭时的处理
+      //console.log("自用功能已关闭");
+    }
+
+    /* 测试区域
     // 测试获取完整属性视图
     const avID = "20250920100057-khqfv5y"; // 替换为你的属性视图ID
     console.log("正在获取属性视图，ID:", avID);
@@ -126,7 +134,16 @@ export default class PluginSample extends Plugin {
     } catch (error) {
       console.error("获取属性视图时发生错误:", error);
     }
-    // 测试区域结束
+    // 测试区域结束/*/
+    // 最简单直接的调用
+    /*await CardUtils.getBoundBlockIDsByViewName("制卡", "20250920100057-khqfv5y")
+      .then((blockIDs) => {
+        console.log("制卡视图绑定的块:", blockIDs);
+      })
+      .catch((error) => {
+        console.error("获取失败:", error);
+      });
+      */
   }
 
   onLayoutReady() {
