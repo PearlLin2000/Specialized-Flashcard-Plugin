@@ -1,5 +1,4 @@
 // 数据处理功能
-import * as sqlAPI from "./API/apiSiyuanSQL";
 import * as riffAPI from "./API/apiSiyuanCard";
 import { checkBlockHasCardAttribute, getParentBlocks } from "./baseUtils";
 
@@ -116,44 +115,4 @@ export async function buildDueCardsData(
     console.error("构建闪卡复习数据失败:", error);
     return null;
   }
-}
-
-export async function paginatedSQLQuery(
-  baseSQL: string,
-  pageSize: number = 500,
-  maxPages: number = 100
-): Promise<any[]> {
-  let allResults: any[] = [];
-  let page = 0;
-
-  while (page < maxPages) {
-    const offset = page * pageSize;
-    let paginatedSQL = baseSQL;
-
-    if (baseSQL.toLowerCase().includes("limit")) {
-      paginatedSQL = baseSQL.replace(
-        /limit\s+\d+/i,
-        `LIMIT ${pageSize} OFFSET ${offset}`
-      );
-    } else {
-      paginatedSQL = `${baseSQL} LIMIT ${pageSize} OFFSET ${offset}`;
-    }
-
-    try {
-      const result = await sqlAPI.sql(paginatedSQL);
-      if (!result || result.length === 0) break;
-
-      allResults = allResults.concat(result);
-      if (result.length < pageSize) break;
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      page++;
-    } catch (error) {
-      console.error(`分页查询第${page + 1}页失败:`, error);
-      page++;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-  }
-
-  return allResults;
 }

@@ -5,13 +5,13 @@
 export * from "./baseUtils";
 
 // 属性视图工具
-export * from "./AttributeViewUtils";
+export * from "./dataBaseUtils";
 
 // 卡片排序工具
 export * from "./CoreUtilsToSorted";
 
 // 卡片组工具
-export * from "./DeckUtils";
+export * from "./deckUtils";
 
 // 文档流工具
 export * from "./OpensydocFlow";

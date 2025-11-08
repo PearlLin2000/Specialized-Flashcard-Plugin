@@ -1,19 +1,25 @@
 // src/services/TimerService.ts
+import { isSelfUseSwitchOn } from "../utils/baseUtils";
+import { processCardCreation, processCardRemoval } from "./DataBaseService";
 
 interface TimerServiceConfig {
   priorityScanEnabled: boolean;
   priorityScanInterval: number; // 分钟
   cacheUpdateInterval: number; // 分钟
+  dataBaseCardsManagementEnabled: boolean; // 新增：数据库卡片管理开关
+  dataBaseCardsManagementInterval: number; // 新增：数据库卡片管理间隔（分钟）
 }
 
 interface TimerCallbacks {
   onPriorityScan: () => void;
   onCacheUpdate: () => Promise<void>;
+  onDataBaseCardsManagement: () => Promise<void>; // 新增：数据库卡片管理回调
 }
 
 export class TimerService {
   private priorityScanTimer: number | null = null;
   private cacheUpdateTimer: number | null = null;
+  private dataBaseCardsManagementTimer: number | null = null; // 新增：数据库卡片管理定时器
   private callbacks: TimerCallbacks;
 
   constructor(callbacks: TimerCallbacks) {
@@ -24,6 +30,7 @@ export class TimerService {
     this.stop();
     this.createPriorityScanTask(config);
     this.createCacheUpdateTask(config);
+    this.createDataBaseCardsManagementTask(config); // 新增：创建数据库卡片管理任务
   }
 
   stop(): void {
@@ -35,6 +42,12 @@ export class TimerService {
     if (this.cacheUpdateTimer) {
       window.clearInterval(this.cacheUpdateTimer);
       this.cacheUpdateTimer = null;
+    }
+
+    if (this.dataBaseCardsManagementTimer) {
+      // 新增：清理数据库卡片管理定时器
+      window.clearInterval(this.dataBaseCardsManagementTimer);
+      this.dataBaseCardsManagementTimer = null;
     }
   }
 
@@ -70,6 +83,25 @@ export class TimerService {
     };
 
     this.cacheUpdateTimer = window.setInterval(executeTask, intervalMs);
+    executeTask(); // 立即执行一次
+  }
+
+  private createDataBaseCardsManagementTask(config: TimerServiceConfig): void {
+    if (!config.dataBaseCardsManagementEnabled) return;
+
+    const intervalMs = config.dataBaseCardsManagementInterval * 60 * 1000;
+    const executeTask = async () => {
+      try {
+        await this.callbacks.onDataBaseCardsManagement();
+      } catch (error) {
+        console.error("数据库卡片管理任务执行失败:", error);
+      }
+    };
+
+    this.dataBaseCardsManagementTimer = window.setInterval(
+      executeTask,
+      intervalMs
+    );
     executeTask(); // 立即执行一次
   }
 }

@@ -52,7 +52,7 @@ export default class PluginSample extends Plugin {
     this.menuService = new MenuService({
       plugin: this,
       dataManager: this.dataManager,
-      Utils: Utils,
+      cardUtils: Utils,
       isMobile: this.isMobile,
       onConfigUpdate: async () => {
         await this.preloadGroupData(true);

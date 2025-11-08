@@ -76,3 +76,43 @@ export async function getParentBlocks(blockIds: string[]): Promise<string[]> {
   const result = await sqlAPI.sql(parentQuery);
   return result.map((block: any) => block.parent_id).filter((id: string) => id);
 }
+
+export async function paginatedSQLQuery(
+  baseSQL: string,
+  pageSize: number = 500,
+  maxPages: number = 100
+): Promise<any[]> {
+  let allResults: any[] = [];
+  let page = 0;
+
+  while (page < maxPages) {
+    const offset = page * pageSize;
+    let paginatedSQL = baseSQL;
+
+    if (baseSQL.toLowerCase().includes("limit")) {
+      paginatedSQL = baseSQL.replace(
+        /limit\s+\d+/i,
+        `LIMIT ${pageSize} OFFSET ${offset}`
+      );
+    } else {
+      paginatedSQL = `${baseSQL} LIMIT ${pageSize} OFFSET ${offset}`;
+    }
+
+    try {
+      const result = await sqlAPI.sql(paginatedSQL);
+      if (!result || result.length === 0) break;
+
+      allResults = allResults.concat(result);
+      if (result.length < pageSize) break;
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      page++;
+    } catch (error) {
+      console.error(`分页查询第${page + 1}页失败:`, error);
+      page++;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  return allResults;
+}

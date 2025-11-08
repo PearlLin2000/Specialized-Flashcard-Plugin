@@ -49,7 +49,7 @@ export async function getAllRiffCardsByDeckID(
 }
 
 export async function addRiffCards(
-  deckID: string,
+  deckID: string = DeckId.DEFAULT,
   blockIDs: string[]
 ): Promise<any> {
   if (blockIDs.length === 0) return null;
@@ -76,7 +76,7 @@ async function getRiffCards(deckID: any, page: any = 1, pageSize: any = 100) {
   }
 }
 
-async function removeRiffCards(deckID: any, blockIDs: any) {
+export async function removeRiffCards(deckID: any, blockIDs: any) {
   const response = await riffAPI.removeRiffCards(deckID, blockIDs);
   if (response) {
     return response;

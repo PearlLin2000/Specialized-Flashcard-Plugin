@@ -1,4 +1,4 @@
-// AttributeUtils.ts
+// DataBaseUtils.ts
 import * as AvAPI from "./API/apiSiyuanAv";
 
 // ============== 属性视图相关函数 ==============
