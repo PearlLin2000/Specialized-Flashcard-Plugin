@@ -62,6 +62,71 @@ export default class PluginSample extends Plugin {
 
     await this.preloadGroupData(true);
     this.startScheduledTasks();
+
+    // 测试区域
+    // 测试获取完整属性视图
+    const avID = "20250920100057-khqfv5y"; // 替换为你的属性视图ID
+    console.log("正在获取属性视图，ID:", avID);
+
+    try {
+      const response = await fetchSyncPost("api/av/getAttributeView", {
+        id: avID,
+      });
+
+      console.log("=== 属性视图完整数据 ===");
+      console.log("响应状态:", response.code === 0 ? "成功" : "失败");
+
+      if (response.code === 0 && response.data && response.data.av) {
+        const av = response.data.av;
+        console.log("属性视图对象(完整数据):", av);
+        console.log("\n====================\n");
+        console.log("属性视图基本信息:");
+        console.log("- ID:", av.id);
+        console.log("- 名称:", av.name);
+        console.log("- 格式版本:", av.spec);
+        console.log("- 当前视图ID:", av.viewID);
+
+        console.log("\n键信息:");
+        if (av.keyIDs && av.keyIDs.length > 0) {
+          console.log("- 键ID列表:", av.keyIDs);
+        } else {
+          console.log("- 无键ID列表");
+        }
+
+        console.log("\n键值对:");
+        if (av.keyValues && av.keyValues.length > 0) {
+          av.keyValues.forEach((kv, index) => {
+            console.log(`  ${index + 1}. 键:`, kv.key);
+            if (kv.values && kv.values.length > 0) {
+              console.log(`     值:`, kv.values);
+            } else {
+              console.log(`     无值`);
+            }
+          });
+        } else {
+          console.log("- 无键值对");
+        }
+
+        console.log("\n视图配置:");
+        if (av.views && av.views.length > 0) {
+          console.log(`- 共有 ${av.views.length} 个视图`);
+          av.views.forEach((view, index) => {
+            console.log(
+              `  ${index + 1}. 视图ID: ${view.id}, 名称: ${view.name}, 类型: ${
+                view.type
+              }`
+            );
+          });
+        } else {
+          console.log("- 无视图配置");
+        }
+      } else {
+        console.log("获取属性视图失败:", response);
+      }
+    } catch (error) {
+      console.error("获取属性视图时发生错误:", error);
+    }
+    // 测试区域结束
   }
 
   onLayoutReady() {

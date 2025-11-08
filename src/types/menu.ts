@@ -1,14 +1,10 @@
 // src/types/menu.ts
 export interface MenuAction {
-  type:
-    | "OPEN_SETTING"
-    | "CREATE_RIFF_CARDS"
-    | "BATCH_PRIORITY"
-    | "OPEN_SQL"
-    | "OPEN_ALL_CARDS";
+  type: "OPEN_SETTING" | "CREATE_RIFF_CARDS";
+  // 移除: "BATCH_PRIORITY" | "OPEN_SQL" | "OPEN_ALL_CARDS"
   groupId?: string;
   groupName?: string;
-  group?: any;
+  group?: any; // 这个属性现在只在 CREATE_RIFF_CARDS 动作中使用，可以保留
 }
 
 export interface MenuItemConfig {
@@ -22,7 +18,7 @@ export interface MenuItemConfig {
 export interface MenuServiceDependencies {
   plugin: any;
   dataManager: any;
-  groupActionService: any;
+  // 移除: groupActionService: any; (不再需要)
   cardUtils: any;
   isMobile: boolean;
   onConfigUpdate?: () => Promise<void>;

@@ -56,21 +56,6 @@ export class MenuService {
             await this.createRiffCardsByGroup(action.groupId);
           }
           break;
-        case "BATCH_PRIORITY":
-          if (action.group) {
-            await this.handleBatchPriority(action.group);
-          }
-          break;
-        case "OPEN_SQL":
-          if (action.group) {
-            this.handleOpenInDocumentSQL(action.group);
-          }
-          break;
-        case "OPEN_ALL_CARDS":
-          if (action.group) {
-            await this.handleOpenInDocumentAllCards(action.group);
-          }
-          break;
         default:
           console.warn("未知的菜单动作:", action);
       }
@@ -185,21 +170,6 @@ export class MenuService {
           groupId: group.id,
           groupName: group.name,
         },
-      },
-      {
-        icon: "iconPriority",
-        label: "批量调整优先级",
-        action: { type: "BATCH_PRIORITY", group },
-      },
-      {
-        icon: "iconSQL",
-        label: "在文档中打开 SQL",
-        action: { type: "OPEN_SQL", group },
-      },
-      {
-        icon: "iconCards",
-        label: "在文档中打开所有卡片",
-        action: { type: "OPEN_ALL_CARDS", group },
       },
       { separatorBefore: true },
       {
@@ -351,22 +321,5 @@ export class MenuService {
         },
       },
     });
-  }
-
-  /**
-   * 委托给 GroupActionService 的方法
-   */
-  private async handleBatchPriority(group: any): Promise<void> {
-    return this.dependencies.groupActionService.handleBatchPriority(group);
-  }
-
-  private handleOpenInDocumentSQL(group: any): void {
-    this.dependencies.groupActionService.handleOpenInDocumentSQL(group);
-  }
-
-  private async handleOpenInDocumentAllCards(group: any): Promise<void> {
-    return this.dependencies.groupActionService.handleOpenInDocumentAllCards(
-      group
-    );
   }
 }
