@@ -11,7 +11,7 @@ import {
 } from "siyuan";
 import GroupManager from "./GroupManager/GroupManager.svelte";
 import { DataManager } from "./DataManager/DataManager";
-import * as CardUtils from "./utils/index";
+import * as Utils from "./utils/index";
 import { GroupActionService } from "./services/GroupActionService";
 import { AutomationService } from "./services/AutomationService";
 import { MenuService } from "./services/MenuService";
@@ -31,7 +31,7 @@ export default class PluginSample extends Plugin {
     this.dataManager = new DataManager(this);
     await this.dataManager.initialize();
     this.groupActionService = new GroupActionService(this.dataManager);
-    this.automationService = new AutomationService(this.dataManager, CardUtils);
+    this.automationService = new AutomationService(this.dataManager, Utils);
 
     const frontEnd = getFrontend();
     this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
@@ -52,7 +52,7 @@ export default class PluginSample extends Plugin {
     this.menuService = new MenuService({
       plugin: this,
       dataManager: this.dataManager,
-      cardUtils: CardUtils,
+      Utils: Utils,
       isMobile: this.isMobile,
       onConfigUpdate: async () => {
         await this.preloadGroupData(true);
@@ -63,7 +63,7 @@ export default class PluginSample extends Plugin {
     this.startScheduledTasks();
 
     // 在实际使用中，通常这样使用：
-    if (await CardUtils.isSelfUseSwitchOn()) {
+    if (await Utils.isSelfUseSwitchOn()) {
       // 执行自用功能的相关逻辑
       //console.log("自用功能已开启，执行专项闪卡操作");
     } else {
@@ -136,7 +136,7 @@ export default class PluginSample extends Plugin {
     }
     // 测试区域结束/*/
     // 最简单直接的调用
-    /*await CardUtils.getBoundBlockIDsByViewName("制卡", "20250920100057-khqfv5y")
+    /*await Utils.getBoundBlockIDsByViewName("制卡", "20250920100057-khqfv5y")
       .then((blockIDs) => {
         console.log("制卡视图绑定的块:", blockIDs);
       })
