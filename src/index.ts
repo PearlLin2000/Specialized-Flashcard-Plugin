@@ -29,8 +29,6 @@ export default class PluginSample extends Plugin {
   private automationService: AutomationService;
   private menuService: MenuService;
 
-  // ==================== 生命周期方法 ====================
-
   async onload() {
     this.dataManager = new DataManager(this);
     await this.dataManager.initialize();
@@ -40,23 +38,18 @@ export default class PluginSample extends Plugin {
     const frontEnd = getFrontend();
     this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
 
-    // 初始化 TimerService
     this.timerService = new TimerService({
       onDataBaseCardsManagement: async () => {
         await this.executeDataBaseCardsManagement();
-        console.log("数据库卡片管理任务执行完毕");
       },
       onPriorityScan: () => {
         this.automationService.executeAutomationTasks();
-        console.log("自动化任务执行完毕");
       },
       onCacheUpdate: async () => {
         await this.executeCacheUpdateTasks();
-        console.log("缓存更新任务执行完毕");
       },
     });
 
-    // 初始化 MenuService
     this.menuService = new MenuService({
       plugin: this,
       dataManager: this.dataManager,
@@ -70,93 +63,9 @@ export default class PluginSample extends Plugin {
     await this.preloadGroupData(true);
     this.startScheduledTasks();
 
-    // 立即手动执行一次数据库卡片管理任务进行测试
-    console.log("=== 立即手动执行数据库卡片管理任务 ===");
-    await this.executeDataBaseCardsManagement();
-    console.log("=== 手动执行完成 ===");
-
-    // 在实际使用中，通常这样使用：
     if (await Utils.isSelfUseSwitchOn()) {
-      // 执行自用功能的相关逻辑
-      //console.log("自用功能已开启，执行专项闪卡操作");
     } else {
-      // 开关关闭时的处理
-      //console.log("自用功能已关闭");
     }
-
-    /* 测试区域
-    // 测试获取完整属性视图
-    const avID = "20250920100057-khqfv5y"; // 替换为你的属性视图ID
-    console.log("正在获取属性视图，ID:", avID);
-
-    try {
-      const response = await fetchSyncPost("api/av/getAttributeView", {
-        id: avID,
-      });
-
-      console.log("=== 属性视图完整数据 ===");
-      console.log("响应状态:", response.code === 0 ? "成功" : "失败");
-
-      if (response.code === 0 && response.data && response.data.av) {
-        const av = response.data.av;
-        console.log("属性视图对象(完整数据):", av);
-        console.log("\n====================\n");
-        console.log("属性视图基本信息:");
-        console.log("- ID:", av.id);
-        console.log("- 名称:", av.name);
-        console.log("- 格式版本:", av.spec);
-        console.log("- 当前视图ID:", av.viewID);
-
-        console.log("\n键信息:");
-        if (av.keyIDs && av.keyIDs.length > 0) {
-          console.log("- 键ID列表:", av.keyIDs);
-        } else {
-          console.log("- 无键ID列表");
-        }
-
-        console.log("\n键值对:");
-        if (av.keyValues && av.keyValues.length > 0) {
-          av.keyValues.forEach((kv, index) => {
-            console.log(`  ${index + 1}. 键:`, kv.key);
-            if (kv.values && kv.values.length > 0) {
-              console.log(`     值:`, kv.values);
-            } else {
-              console.log(`     无值`);
-            }
-          });
-        } else {
-          console.log("- 无键值对");
-        }
-
-        console.log("\n视图配置:");
-        if (av.views && av.views.length > 0) {
-          console.log(`- 共有 ${av.views.length} 个视图`);
-          av.views.forEach((view, index) => {
-            console.log(
-              `  ${index + 1}. 视图ID: ${view.id}, 名称: ${view.name}, 类型: ${
-                view.type
-              }`
-            );
-          });
-        } else {
-          console.log("- 无视图配置");
-        }
-      } else {
-        console.log("获取属性视图失败:", response);
-      }
-    } catch (error) {
-      console.error("获取属性视图时发生错误:", error);
-    }
-    // 测试区域结束/*/
-    // 最简单直接的调用
-    /*await Utils.getBoundBlockIDsByViewName("制卡", "20250920100057-khqfv5y")
-      .then((blockIDs) => {
-        console.log("制卡视图绑定的块:", blockIDs);
-      })
-      .catch((error) => {
-        console.error("获取失败:", error);
-      });
-      */
   }
 
   onLayoutReady() {
@@ -183,10 +92,7 @@ export default class PluginSample extends Plugin {
           }
         }
 
-        // 使用 MenuService 构建菜单
         this.menuService.buildMainMenu(rect);
-        //const groups = this.dataManager.getEnabledGroups();
-        //this.menuService.buildGroupContextMenu(groups[0], rect);
       },
     });
   }
@@ -199,8 +105,6 @@ export default class PluginSample extends Plugin {
     this.removeData("plugin-config.json");
     this.removeData("cache-data.json");
   }
-
-  // ==================== 公开方法 ====================
 
   openSetting(): void {
     let dialog = new Dialog({
@@ -226,14 +130,10 @@ export default class PluginSample extends Plugin {
     });
   }
 
-  /**
-   * 打开分组上下文菜单
-   */
   openGroupContextMenu(group: any, rect?: DOMRect): void {
     this.menuService.buildGroupContextMenu(group, rect);
   }
 
-  // 委托给 GroupActionService 的方法保持不变
   async handleBatchPriority(group: any): Promise<void> {
     return this.groupActionService.handleBatchPriority(group);
   }
@@ -246,19 +146,11 @@ export default class PluginSample extends Plugin {
     return this.groupActionService.handleOpenInDocumentAllCards(group);
   }
 
-  // ==================== 私有方法 - 定时任务管理 ====================
-
   private startScheduledTasks(): void {
     const config = this.dataManager.getConfig();
 
-    // 强制开启数据库卡片管理功能进行测试
-    config.dataBaseCardsManagementEnabled = false; //false;
-    config.dataBaseCardsManagementInterval = 100; // 设置为1分钟便于测试
-
-    console.log("强制开启数据库卡片管理任务，配置:", {
-      enabled: config.dataBaseCardsManagementEnabled,
-      interval: config.dataBaseCardsManagementInterval,
-    });
+    config.dataBaseCardsManagementEnabled = false;
+    config.dataBaseCardsManagementInterval = 100;
 
     this.timerService.start(config);
   }
@@ -280,30 +172,15 @@ export default class PluginSample extends Plugin {
     }
   }
 
-  // ==================== 新增方法 - 数据库卡片管理 ====================
-
   private async executeDataBaseCardsManagement(): Promise<void> {
     try {
-      console.log("=== 开始执行数据库卡片管理任务 ===");
-
-      // 硬编码参数执行制卡流程
-      console.log("执行制卡流程...");
       await processCardCreation("20250920100057-khqfv5y", "制卡");
-      console.log("制卡流程完成");
-
-      //* 硬编码参数执行取消制卡流程
-      console.log("执行取消制卡流程...");
       await processCardRemoval("20250920100057-khqfv5y", "取消制卡");
       await processCardRemoval("20250920100057-khqfv5y", "取消制卡2");
-      console.log("取消制卡流程完成");
-
-      console.log("=== 数据库卡片管理任务执行完毕 ===");
     } catch (error) {
       console.error("数据库卡片管理任务执行失败:", error);
     }
   }
-
-  // ==================== 私有方法 - 数据管理 ====================
 
   private async preloadGroupData(forceUpdate: boolean = true): Promise<void> {
     const groups = this.dataManager.getEnabledGroups();
