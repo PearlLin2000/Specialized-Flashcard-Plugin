@@ -40,7 +40,12 @@ export default class PluginSample extends Plugin {
 
     this.timerService = new TimerService({
       onDataBaseCardsManagement: async () => {
-        await this.executeDataBaseCardsManagement();
+        if (await Utils.isSelfUseSwitchOn()) {
+          const config = this.dataManager.getConfig();
+          config.dataBaseCardsManagementEnabled = true;
+          await this.executeDataBaseCardsManagement();
+          console.log("数据库卡片管理任务启用");
+        }
       },
       onPriorityScan: () => {
         this.automationService.executeAutomationTasks();
@@ -59,13 +64,11 @@ export default class PluginSample extends Plugin {
         await this.preloadGroupData(true);
       },
     });
+    // 执行测试
+    await this.testBatchSetDatabaseField();
 
     await this.preloadGroupData(true);
     this.startScheduledTasks();
-
-    if (await Utils.isSelfUseSwitchOn()) {
-    } else {
-    }
   }
 
   onLayoutReady() {
@@ -148,10 +151,6 @@ export default class PluginSample extends Plugin {
 
   private startScheduledTasks(): void {
     const config = this.dataManager.getConfig();
-
-    config.dataBaseCardsManagementEnabled = false;
-    config.dataBaseCardsManagementInterval = 100;
-
     this.timerService.start(config);
   }
 
@@ -179,6 +178,43 @@ export default class PluginSample extends Plugin {
       await processCardRemoval("20250920100057-khqfv5y", "取消制卡2");
     } catch (error) {
       console.error("数据库卡片管理任务执行失败:", error);
+    }
+  }
+  // 测试批量设置数据库字段
+  private async testBatchSetDatabaseField() {
+    try {
+      const avID = "20250920100057-khqfv5y";
+
+      // 使用 await 获取实际的块数据
+      const block = await Utils.getBlockByID("20251109155151-p6b03rb");
+
+      // 将单个块包装成数组
+      const blocks = [block];
+
+      console.log("获取的块数据:", blocks);
+
+      // 这里需要补充具体的 keyID 和 value
+      const keyID = "20250920101255-stkqgnr"; // 替换为实际的字段Key
+      const value = "将来"; // 替换为实际的字段值
+
+      // 可选参数
+      const viewID = undefined; // 如果有视图ID可以传入
+      const databaseBlockID = undefined; // 如果有数据库块ID可以传入
+
+      console.log("开始批量设置数据库字段...");
+
+      await Utils.batchSetDatabaseField(
+        avID,
+        blocks,
+        keyID,
+        value,
+        viewID,
+        databaseBlockID
+      );
+
+      console.log("批量设置数据库字段测试完成！");
+    } catch (error) {
+      console.error("测试失败:", error);
     }
   }
 

@@ -116,3 +116,9 @@ export async function paginatedSQLQuery(
 
   return allResults;
 }
+
+export async function getBlockByID(blockId: string): Promise<Block> {
+  let sqlScript = `select * from blocks where id ='${blockId}'`;
+  let data = await sqlAPI.sql(sqlScript);
+  return data[0];
+}

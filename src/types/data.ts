@@ -44,6 +44,8 @@ export interface PluginConfig {
   priorityScanEnabled: boolean;
   priorityScanInterval: number;
   cacheUpdateInterval: number;
+  dataBaseCardsManagementEnabled: boolean; // [新增] 数据库卡片管理功能开关
+  dataBaseCardsManagementInterval: number; // [新增] 数据库卡片管理任务执行间隔（分钟）
 }
 
 /**
@@ -103,6 +105,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
   priorityScanEnabled: false,
   priorityScanInterval: 15,
   cacheUpdateInterval: 30,
+  dataBaseCardsManagementEnabled: false, // [新增] 默认不开启
+  dataBaseCardsManagementInterval: 15, // [新增] 扫描时间15分钟
 };
 
 /**
