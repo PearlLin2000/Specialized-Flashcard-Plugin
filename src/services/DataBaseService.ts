@@ -85,7 +85,6 @@ async function getBlocksByViewWithRiffFilter(
     // 1. 获取块ID列表
     const blockIDs = await Utils.getBoundBlockIDsByViewName(viewName, avID);
     if (blockIDs.length === 0) {
-      console.warn(`未找到属性视图 "${viewName}" 的块ID列表`);
       return [];
     }
 
@@ -96,23 +95,25 @@ async function getBlocksByViewWithRiffFilter(
     // 3. 执行分页查询
     const allBlocks = await Utils.paginatedSQLQuery(baseSQL);
     if (allBlocks.length === 0) {
-      console.warn(`未找到对应的块数据`);
       return [];
     }
 
-    // 4. 根据闪卡属性筛选
-    const hasRiffCards = allBlocks.filter(
-      (block) => block.ial && block.ial["custom-riff-decks"]
-    );
+    // 4. 根据闪卡属性筛选 - 优化为单次循环
+    let hasRiffCards = [];
+    let noRiffCards = [];
 
-    const noRiffCards = allBlocks.filter(
-      (block) => !block.ial || !block.ial["custom-riff-decks"]
-    );
+    for (const block of allBlocks) {
+      if (block.ial && block.ial.includes('custom-riff-decks="')) {
+        hasRiffCards.push(block);
+      } else {
+        noRiffCards.push(block);
+      }
+    }
 
     // 5. 根据参数返回对应列表
     return isornoriffcards ? hasRiffCards : noRiffCards;
   } catch (error) {
-    console.error(`获取属性视图块数据失败:`, error);
+    console.error(`DataBaseService- 获取属性视图块数据失败:`, error);
     return [];
   }
 }

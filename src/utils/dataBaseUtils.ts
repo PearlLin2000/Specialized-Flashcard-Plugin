@@ -20,25 +20,32 @@ export async function getBoundBlockIDsByViewName(
       return [];
     }
 
-    const itemIDs: string[] = view.itemIds || [];
-    if (itemIDs.length === 0) {
-      console.warn(`⚠️ 视图中没有 itemIDs`);
+    try {
+      const renderedView = await AvAPI.renderAttributeView(avID, "", view.id);
+      const rows = renderedView.view.rows;
+      const primaryKeys = rows.map((row) => row.id);
+
+      if (renderedView && renderedView.view) {
+        const boundBlockIDs: Record<string, string> | null =
+          await AvAPI.getAttributeViewBoundBlockIDsByItemIDs(avID, primaryKeys);
+
+        if (!boundBlockIDs) {
+          console.warn(`❌ 获取 BoundBlockIDs 失败`);
+          return [];
+        }
+
+        const result: string[] = Object.values(boundBlockIDs).filter(
+          (blockID) => blockID && blockID.trim() !== ""
+        );
+
+        return result;
+      } else {
+        return [];
+      }
+    } catch (error) {
+      console.error(`渲染属性视图失败:`, error);
       return [];
     }
-
-    const boundBlockIDs: Record<string, string> | null =
-      await AvAPI.getAttributeViewBoundBlockIDsByItemIDs(avID, itemIDs);
-
-    if (!boundBlockIDs) {
-      console.warn(`❌ 获取 BoundBlockIDs 失败`);
-      return [];
-    }
-
-    const result: string[] = Object.values(boundBlockIDs).filter(
-      (blockID) => blockID && blockID.trim() !== ""
-    );
-
-    return result;
   } catch (error) {
     console.error(`💥 获取 BoundBlockIDs 失败:`, error);
     return [];

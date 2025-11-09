@@ -16,6 +16,10 @@ import { GroupActionService } from "./services/GroupActionService";
 import { AutomationService } from "./services/AutomationService";
 import { MenuService } from "./services/MenuService";
 import { TimerService } from "./services/TimerService";
+import {
+  processCardCreation,
+  processCardRemoval,
+} from "./services/DataBaseService";
 
 export default class PluginSample extends Plugin {
   private isMobile: boolean;
@@ -38,6 +42,10 @@ export default class PluginSample extends Plugin {
 
     // 初始化 TimerService
     this.timerService = new TimerService({
+      onDataBaseCardsManagement: async () => {
+        await this.executeDataBaseCardsManagement();
+        console.log("数据库卡片管理任务执行完毕");
+      },
       onPriorityScan: () => {
         this.automationService.executeAutomationTasks();
         console.log("自动化任务执行完毕");
@@ -61,6 +69,11 @@ export default class PluginSample extends Plugin {
 
     await this.preloadGroupData(true);
     this.startScheduledTasks();
+
+    // 立即手动执行一次数据库卡片管理任务进行测试
+    console.log("=== 立即手动执行数据库卡片管理任务 ===");
+    await this.executeDataBaseCardsManagement();
+    console.log("=== 手动执行完成 ===");
 
     // 在实际使用中，通常这样使用：
     if (await Utils.isSelfUseSwitchOn()) {
@@ -237,6 +250,16 @@ export default class PluginSample extends Plugin {
 
   private startScheduledTasks(): void {
     const config = this.dataManager.getConfig();
+
+    // 强制开启数据库卡片管理功能进行测试
+    config.dataBaseCardsManagementEnabled = false; //false;
+    config.dataBaseCardsManagementInterval = 100; // 设置为1分钟便于测试
+
+    console.log("强制开启数据库卡片管理任务，配置:", {
+      enabled: config.dataBaseCardsManagementEnabled,
+      interval: config.dataBaseCardsManagementInterval,
+    });
+
     this.timerService.start(config);
   }
 
@@ -254,6 +277,29 @@ export default class PluginSample extends Plugin {
       await this.preloadGroupData(true);
     } catch (error) {
       console.error("缓存更新任务执行失败:", error);
+    }
+  }
+
+  // ==================== 新增方法 - 数据库卡片管理 ====================
+
+  private async executeDataBaseCardsManagement(): Promise<void> {
+    try {
+      console.log("=== 开始执行数据库卡片管理任务 ===");
+
+      // 硬编码参数执行制卡流程
+      console.log("执行制卡流程...");
+      await processCardCreation("20250920100057-khqfv5y", "制卡");
+      console.log("制卡流程完成");
+
+      //* 硬编码参数执行取消制卡流程
+      console.log("执行取消制卡流程...");
+      await processCardRemoval("20250920100057-khqfv5y", "取消制卡");
+      await processCardRemoval("20250920100057-khqfv5y", "取消制卡2");
+      console.log("取消制卡流程完成");
+
+      console.log("=== 数据库卡片管理任务执行完毕 ===");
+    } catch (error) {
+      console.error("数据库卡片管理任务执行失败:", error);
     }
   }
 
