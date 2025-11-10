@@ -1,6 +1,7 @@
 // src/index.ts
 import {
   Plugin,
+  adaptHotkey,
   showMessage,
   confirm,
   Dialog,
@@ -27,6 +28,16 @@ export default class PluginSample extends Plugin {
   private menuService: MenuService;
 
   async onload() {
+    // 注册快捷键命令
+    this.addCommand({
+      langKey: "executeDataBaseCardsManagement",
+      langText: "触发：数据库相关功能使用",
+      hotkey: "", // 留空让用户自定义
+      callback: () => {
+        this.executeDataBaseCardsManagement();
+      },
+    });
+
     this.dataManager = new DataManager(this);
     await this.dataManager.initialize();
     this.groupActionService = new GroupActionService(this.dataManager);
