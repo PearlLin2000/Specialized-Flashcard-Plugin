@@ -79,7 +79,7 @@ export async function batchSetDatabaseField(
       throw new Error("blocks 必须是非空数组");
     }
 
-    console.log("开始添加块到数据库，块数量:", blocks.length);
+    console.log("开始添加块到数据库，块:", blocks);
 
     // 第一步：添加所有块到数据库
     await AvAPI.addAttributeViewBlocks(

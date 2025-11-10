@@ -37,21 +37,21 @@ export default class PluginSample extends Plugin {
 
     const frontEnd = getFrontend();
     this.isMobile = frontEnd === "mobile" || frontEnd === "browser-mobile";
-
+    //自用，启用数据库卡片管理任务
+    const config = this.dataManager.getConfig();
+    config.dataBaseCardsManagementEnabled = true;
+    config.dataBaseCardsManagementInterval = 15;
+    await this.executeDataBaseCardsManagement();
     this.timerService = new TimerService({
-      onDataBaseCardsManagement: async () => {
-        if (await Utils.isSelfUseSwitchOn()) {
-          const config = this.dataManager.getConfig();
-          config.dataBaseCardsManagementEnabled = true;
-          await this.executeDataBaseCardsManagement();
-          console.log("数据库卡片管理任务启用");
-        }
-      },
       onPriorityScan: () => {
         this.automationService.executeAutomationTasks();
       },
       onCacheUpdate: async () => {
         await this.executeCacheUpdateTasks();
+      },
+      onDataBaseCardsManagement: async () => {
+        await this.executeDataBaseCardsManagement();
+        console.log("数据库卡片管理任务启用");
       },
     });
 
@@ -65,7 +65,7 @@ export default class PluginSample extends Plugin {
       },
     });
     // 执行测试
-    await this.testBatchSetDatabaseField();
+    //await this.testBatchSetDatabaseField();
 
     await this.preloadGroupData(true);
     this.startScheduledTasks();
@@ -173,6 +173,8 @@ export default class PluginSample extends Plugin {
 
   private async executeDataBaseCardsManagement(): Promise<void> {
     try {
+      console.log("===============================");
+      console.log("执行数据库卡片管理任务...");
       await processCardCreation("20250920100057-khqfv5y", "制卡");
       await processCardRemoval("20250920100057-khqfv5y", "取消制卡");
       await processCardRemoval("20250920100057-khqfv5y", "取消制卡2");

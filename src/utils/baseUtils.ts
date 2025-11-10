@@ -7,13 +7,18 @@ export async function isSelfUseSwitchOn(): Promise<number> {
     const blockId = "20250428141524-dlnghf0"; //一个块id，在自已的笔记里（path：/20250130200147-9q0nu0y.sy）
     const sqlScript = `SELECT * FROM blocks WHERE id = '${blockId}'`;
     const result = await sqlAPI.sql(sqlScript);
+    // 强行返回开启状态，方便自用
+    console.log("自用功能开关已开启");
+    return 1;
     if (
       result &&
       result.length > 0 &&
       result[0].markdown === "开关：临时专项闪卡-自用功能"
     ) {
+      console.log("自用功能开关已开启");
       return 1;
     }
+    console.log("自用功能开关关闭");
     return 0;
   } catch (error) {
     console.error(`检查自用功能开关时出错:`, error);
