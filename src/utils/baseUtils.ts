@@ -127,3 +127,89 @@ export async function getBlockByID(blockId: string): Promise<Block> {
   let data = await sqlAPI.sql(sqlScript);
   return data[0];
 }
+
+/**
+ * 批量根据blockIDs获取blocks
+ * @param blockIds blockID数组（1到上万个）
+ * @param batchSize 每批查询的ID数量，默认100个
+ * @param pageSize 每页数据量，默认500
+ * @returns 所有blocks的拼接结果
+ */
+export async function getBlocksByIDs(
+  blockIds: string[],
+  batchSize: number = 100,
+  pageSize: number = 500
+): Promise<Block[]> {
+  if (!blockIds || blockIds.length === 0) {
+    return [];
+  }
+
+  let allBlocks: Block[] = [];
+
+  // 将blockIds分批处理，避免SQL IN语句过长
+  for (let i = 0; i < blockIds.length; i += batchSize) {
+    const batch = blockIds.slice(i, i + batchSize);
+
+    // 构建IN查询的SQL
+    const idList = batch.map((id) => `'${id}'`).join(",");
+    const baseSQL = `SELECT * FROM blocks WHERE id IN (${idList})`;
+
+    try {
+      // 使用分页查询获取该批次的所有数据
+      const batchResults = await paginatedSQLQuery(baseSQL, pageSize);
+      allBlocks = allBlocks.concat(batchResults);
+
+      // 批次间短暂延迟，减轻数据库压力
+      if (i + batchSize < blockIds.length) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      /*console.log(
+        `已完成批次 ${Math.floor(i / batchSize) + 1}/${Math.ceil(
+          blockIds.length / batchSize
+        )}`
+      );*/
+    } catch (error) {
+      console.error(`批次 ${Math.floor(i / batchSize) + 1} 查询失败:`, error);
+      // 可以选择继续处理其他批次，或者抛出错误
+      // throw error;
+    }
+  }
+
+  return allBlocks;
+}
+
+// 并行处理版本（谨慎使用，可能给数据库带来压力）
+export async function getBlocksByIDsParallel(
+  blockIds: string[],
+  batchSize: number = 50,
+  pageSize: number = 500,
+  maxConcurrent: number = 3 // 最大并发数
+): Promise<Block[]> {
+  const batches = [];
+  for (let i = 0; i < blockIds.length; i += batchSize) {
+    batches.push(blockIds.slice(i, i + batchSize));
+  }
+
+  const results = [];
+  // 使用PromisePool或其他并发控制库来控制并发数
+  for (let i = 0; i < batches.length; i += maxConcurrent) {
+    const currentBatches = batches.slice(i, i + maxConcurrent);
+    const batchPromises = currentBatches.map((batch) =>
+      processBatch(batch, pageSize)
+    );
+    const batchResults = await Promise.all(batchPromises);
+    results.push(...batchResults.flat());
+  }
+
+  return results;
+}
+
+async function processBatch(
+  batch: string[],
+  pageSize: number
+): Promise<Block[]> {
+  const idList = batch.map((id) => `'${id}'`).join(",");
+  const baseSQL = `SELECT * FROM blocks WHERE id IN (${idList})`;
+  return await paginatedSQLQuery(baseSQL, pageSize);
+}

@@ -13,24 +13,33 @@ export class GroupActionService {
 
   async handleBatchPriority(group: GroupConfig): Promise<void> {
     try {
+      showMessage(
+        `分组 "${group.name}" 已触发优先级的查询请求提交，请耐心等待...`
+      );
       // [修改] 使用 dataManager 获取块ID，此函数内部处理了缓存和 queryFirst 逻辑
-      const blockIds = await this.dataManager.provideGroupCacheBlockIds(group);
+      const blockIds = await this.dataManager.provideGroupCacheBlockIds(
+        group,
+        true
+      );
 
       if (!blockIds || blockIds.length === 0) {
         showMessage(`分组 "${group.name}" 未找到匹配的块`);
         return;
       }
 
-      const cards = await CardUtils.getRiffCardsByBlockIds(blockIds);
+      const blocks = await CardUtils.getBlocksByIDs(blockIds);
 
-      if (cards.length === 0) {
+      if (blocks.length === 0) {
         showMessage(`分组 "${group.name}" 未找到对应的闪卡`);
         return;
       }
 
-      await CardUtils.setCardsPriority(cards, group.priority);
+      await CardUtils.setCardsPriority(blocks, group.priority);
       showMessage(
         `触发 "${group.name}" 的闪卡设置优先级 ${group.priority} 调用，请耐心等待`
+      );
+      console.log(
+        `分组 "${group.name}" 的 ${blocks.length} 张闪卡优先级已设置为 ${group.priority}`
       );
     } catch (error) {
       console.error(`批量设置优先级失败:`, error);

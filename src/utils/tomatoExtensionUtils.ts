@@ -29,7 +29,7 @@ export function filterPureTodayCards(cards: any[]): any[] {
 }
 
 export async function setCardsPriority(
-  cards: any[],
+  blocks: any[],
   priority: number
 ): Promise<void> {
   if (
@@ -40,7 +40,7 @@ export async function setCardsPriority(
   }
   try {
     await window.tomato_zZmqus5PtYRi.cardPriorityBox.updateDocPriorityBatchDialog(
-      cards,
+      blocks,
       priority,
       false
     );
