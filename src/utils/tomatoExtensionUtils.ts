@@ -1,3 +1,5 @@
+import { BlockList } from "net";
+
 // 番茄工具箱扩展功能
 export function getTodayString(): string {
   const today = new Date();
@@ -50,11 +52,11 @@ export async function setCardsPriority(
   }
 }
 
-export async function postponeCards(cards: any[], days: number): Promise<void> {
-  if (cards.length === 0) return;
+export async function postponeCards(blocks, days: number): Promise<void> {
+  if (blocks.length === 0) return;
   try {
     await window.tomato_zZmqus5PtYRi.cardPriorityBox.stopCards(
-      cards,
+      blocks,
       false,
       days.toString()
     );
