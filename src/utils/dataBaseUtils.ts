@@ -55,15 +55,50 @@ export async function getBoundBlockIDsByViewName(
 /**
  * 批量设置数据库条目字段值
  * @param {string} avID - 数据库ID
- * @param {Array} blocks - 块对象数组，每个块必须包含id属性
+ * @param {Array} srcs - 块对象数组，每个块必须包含id属性
  * @param {string} keyID - 要设置的字段Key
  * @param {any} value - 要设置的字段值
  * @param {string} [viewID] - 视图ID（可选）
  * @param {string} [databaseBlockID] - 数据库块ID（可选，用于重新渲染）
  */
+
+export async function addAttributeViewBlocksByBlockIDs(
+  avID: string,
+  blockIDs: string[]
+): Promise<null> {
+  try {
+    // 参数验证
+    if (!avID || !blockIDs || !Array.isArray(blockIDs)) {
+      throw new Error("缺少必要参数: avID 或 blockIDs");
+    }
+
+    if (blockIDs.length === 0) {
+      console.warn("blockIDs 数组为空，无需添加");
+      return null;
+    }
+
+    // 转换块ID为块对象数组
+    const srcs = processSrcsByBlockIDs(blockIDs);
+
+    console.log(`正在添加 ${blockIDs.length} 个块到数据库 ${avID}`);
+
+    // 调用API添加块
+    const result = await AvAPI.addAttributeViewBlocks(avID, srcs);
+
+    console.log(`成功添加 ${blockIDs.length} 个块到数据库`);
+    return result;
+  } catch (error) {
+    console.error("添加块到数据库失败:", error);
+    throw error;
+  }
+}
+
 export async function batchSetDatabaseField(
   avID: string,
-  blocks: any[],
+  srcs: {
+    id: BlockId;
+    isDetached?: boolean;
+  }[],
   keyID: string,
   value: any,
   viewID?: string,
@@ -84,7 +119,7 @@ export async function batchSetDatabaseField(
     // 第一步：添加所有块到数据库
     await AvAPI.addAttributeViewBlocks(
       avID,
-      blocks,
+      srcs,
       undefined, // blockID
       viewID,
       undefined, // groupID
@@ -93,8 +128,9 @@ export async function batchSetDatabaseField(
     );
 
     console.log("添加块到数据库完成");
+    console.log("设置默认字段值功能等待完成...");
 
-    // 第二步：获取所有块的blockIDs
+    /* 第二步：获取所有块的blockIDs
     const blockIDs = blocks.map((block) => block.id);
     console.log("要查询的块ID:", blockIDs);
 
@@ -127,6 +163,7 @@ export async function batchSetDatabaseField(
       } else {
         console.warn(`未找到块 ${block.id} 对应的条目ID`);
       }
+      
     }
 
     if (updatePromises.length === 0) {
@@ -151,9 +188,18 @@ export async function batchSetDatabaseField(
     console.log(
       `成功为 ${updatePromises.length} 个条目设置字段 ${keyID} 的值为:`,
       value
-    );
+    );*/
   } catch (error) {
     console.error("批量设置数据库字段失败:", error);
     throw error;
   }
+}
+
+// 辅助函数：将blockIDs数组转换为块对象数组
+
+function processSrcsByBlockIDs(blockIDs) {
+  return blockIDs.map((block) => ({
+    id: block,
+    isDetached: false,
+  }));
 }

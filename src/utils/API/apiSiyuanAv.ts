@@ -246,7 +246,10 @@ export async function appendAttributeViewDetachedBlocksWithValues(
 
 export async function addAttributeViewBlocks(
   avID: string,
-  srcs: any[],
+  srcs: {
+    id: BlockId;
+    isDetached?: boolean;
+  }[],
   blockID?: string,
   viewID?: string,
   groupID?: string,

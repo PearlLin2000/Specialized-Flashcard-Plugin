@@ -1,6 +1,4 @@
 // src/services/TimerService.ts
-import { isSelfUseSwitchOn } from "../utils/baseUtils";
-import { processCardCreation, processCardRemoval } from "./DataBaseService";
 
 interface TimerServiceConfig {
   priorityScanEnabled: boolean;

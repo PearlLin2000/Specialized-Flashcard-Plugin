@@ -16,10 +16,7 @@ import { GroupActionService } from "./services/GroupActionService";
 import { AutomationService } from "./services/AutomationService";
 import { MenuService } from "./services/MenuService";
 import { TimerService } from "./services/TimerService";
-import {
-  processCardCreation,
-  processCardRemoval,
-} from "./services/DataBaseService";
+import { DataBaseService } from "./services/DataBaseService";
 
 export default class PluginSample extends Plugin {
   private isMobile: boolean;
@@ -64,8 +61,6 @@ export default class PluginSample extends Plugin {
         await this.preloadGroupData(true);
       },
     });
-    // 执行测试
-    //await this.testBatchSetDatabaseField();
 
     await this.preloadGroupData(true);
     this.startScheduledTasks();
@@ -175,48 +170,65 @@ export default class PluginSample extends Plugin {
     try {
       console.log("===============================");
       console.log("执行数据库卡片管理任务...");
-      await processCardCreation("20250920100057-khqfv5y", "制卡");
-      await processCardRemoval("20250920100057-khqfv5y", "取消制卡");
-      await processCardRemoval("20250920100057-khqfv5y", "取消制卡2");
+      await DataBaseService.processCardCreation(
+        "20250920100057-khqfv5y",
+        "制卡"
+      );
+      await DataBaseService.processCardRemoval(
+        "20250920100057-khqfv5y",
+        "取消制卡"
+      );
+      await DataBaseService.processCardRemoval(
+        "20250920100057-khqfv5y",
+        "取消制卡2"
+      );
+      // 执行测试
+      await this.addBlocksToViewBySQL();
     } catch (error) {
       console.error("数据库卡片管理任务执行失败:", error);
     }
   }
-  // 测试批量设置数据库字段
-  private async testBatchSetDatabaseField() {
+  // 测试代码 - 使用新增的 addBlocksToViewBySQL 函数
+
+  private async addBlocksToViewBySQL(): Promise<void> {
     try {
+      // 1. 定义 SQL 查询
+      const SQL = `
+      select * from blocks
+      where id in (
+          select block_id from attributes where name = 'custom-reservation'
+      )
+      and id not in (
+          select block_id from attributes 
+          where name = 'custom-avs' 
+          and value like '%20250920100057-khqfv5y%'
+      ) limit 99
+    `;
+
+      // 2. 定义属性视图 ID
       const avID = "20250920100057-khqfv5y";
 
-      // 使用 await 获取实际的块数据
-      const block = await Utils.getBlockByID("20251109155151-p6b03rb");
+      // 3. 调用 DataBaseService.addBlocksToViewBySQL
+      console.log("开始执行 addBlocksToViewBySQL 测试...");
+      console.log(`SQL: ${SQL}`);
+      console.log(`avID: ${avID}`);
 
-      // 将单个块包装成数组
-      const blocks = [block];
+      const result = await DataBaseService.addBlocksToViewBySQL(SQL, avID);
 
-      console.log("获取的块数据:", blocks);
+      // 4. 输出结果
+      console.log("执行结果:", {
+        成功: result.success,
+        添加数量: result.addedCount,
+        消息: result.message,
+      });
 
-      // 这里需要补充具体的 keyID 和 value
-      const keyID = "20250920101255-stkqgnr"; // 替换为实际的字段Key
-      const value = "将来"; // 替换为实际的字段值
-
-      // 可选参数
-      const viewID = undefined; // 如果有视图ID可以传入
-      const databaseBlockID = undefined; // 如果有数据库块ID可以传入
-
-      console.log("开始批量设置数据库字段...");
-
-      await Utils.batchSetDatabaseField(
-        avID,
-        blocks,
-        keyID,
-        value,
-        viewID,
-        databaseBlockID
-      );
-
-      console.log("批量设置数据库字段测试完成！");
+      if (result.success) {
+        console.log(`✅ 测试成功！${result.message}`);
+      } else {
+        console.log(`❌ 测试失败：${result.message}`);
+      }
     } catch (error) {
-      console.error("测试失败:", error);
+      console.error("测试过程中发生错误:", error);
     }
   }
 
