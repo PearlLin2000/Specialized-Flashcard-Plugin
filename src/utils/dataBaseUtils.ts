@@ -21,7 +21,15 @@ export async function getBoundBlockIDsByViewName(
     }
 
     try {
-      const renderedView = await AvAPI.renderAttributeView(avID, "", view.id);
+      const renderedView = await AvAPI.renderAttributeView(
+        avID,
+        "",
+        view.id,
+        1,
+        -1,
+        "",
+        {}
+      );
       const rows = renderedView.view.rows;
       const primaryKeys = rows.map((row) => row.id);
 
@@ -33,11 +41,12 @@ export async function getBoundBlockIDsByViewName(
           console.warn(`❌ 获取 BoundBlockIDs 失败`);
           return [];
         }
-
+        //console.log("boundBlockIDs的数量:", Object.keys(boundBlockIDs).length);
+        //console.log("boundBlockIDs:", boundBlockIDs);
         const result: string[] = Object.values(boundBlockIDs).filter(
           (blockID) => blockID && blockID.trim() !== ""
         );
-
+        console.log(`✅ 获取到 ${result.length} 个 BoundBlockIDs：`, result);
         return result;
       } else {
         return [];

@@ -102,13 +102,16 @@ export class DataBaseService {
       if (allBlocks.length === 0) {
         return [];
       }
-
+      console.log(
+        `DataBaseService- 获取属性视图块数据: 共获取到 ${allBlocks.length} 个块：`,
+        allBlocks
+      );
       // 4. 根据闪卡属性筛选 - 优化为单次循环
       let hasRiffCards = [];
       let noRiffCards = [];
 
       for (const block of allBlocks) {
-        if (block.ial && block.ial.includes('custom-riff-decks="')) {
+        if (block.ial && block.ial.includes("custom-riff-decks")) {
           hasRiffCards.push(block);
         } else {
           noRiffCards.push(block);

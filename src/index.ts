@@ -35,6 +35,7 @@ export default class PluginSample extends Plugin {
       hotkey: "", // 留空让用户自定义
       callback: () => {
         this.executeDataBaseCardsManagement();
+        showMessage("专项闪卡：已触发数据库相关刷新");
       },
     });
 
@@ -181,14 +182,17 @@ export default class PluginSample extends Plugin {
     try {
       console.log("===============================");
       console.log("执行数据库卡片管理任务...");
+      console.log("视图：制卡");
       await DataBaseService.processCardCreation(
         "20250920100057-khqfv5y",
         "制卡"
       );
+      console.log("视图：取消制卡");
       await DataBaseService.processCardRemoval(
         "20250920100057-khqfv5y",
         "取消制卡"
       );
+      console.log("视图：取消制卡2");
       await DataBaseService.processCardRemoval(
         "20250920100057-khqfv5y",
         "取消制卡2"
