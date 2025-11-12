@@ -81,7 +81,9 @@ export class AutomationService {
       );
 
       if (postponableCards.length > 0) {
-        /*番茄工具箱接收的是blocks，但传入了cards。
+        /*更正：传入cards似乎是正确的。番茄佬的示例代码也是这样用的。
+        ============
+        番茄工具箱接收的是blocks，但传入了cards。
           经过测试，能用！（虽然不太符合直觉，但要改这个函数的话，要动baseutils，而且函数本身几乎是完全重构）
         遇到bug，再考虑排查和改。
         目前先这样。*/

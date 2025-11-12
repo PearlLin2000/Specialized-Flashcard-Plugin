@@ -1,5 +1,3 @@
-import { BlockList } from "net";
-
 // 番茄工具箱扩展功能
 export function getTodayString(): string {
   const today = new Date();
