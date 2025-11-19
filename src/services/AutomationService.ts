@@ -61,6 +61,9 @@ export class AutomationService {
       }
 
       await this.cardUtils.setCardsPriority(cardsToUpdate, group.priority);
+      console.log(
+        `分组 "${group.name}" 优先级扫描完成，更新了 ${cardsToUpdate.length} 张卡片的优先级。`
+      );
     } catch (error) {
       console.error(`分组 "${group.name}" 优先级扫描失败:`, error);
     }

@@ -46,7 +46,7 @@ export async function getBoundBlockIDsByViewName(
         const result: string[] = Object.values(boundBlockIDs).filter(
           (blockID) => blockID && blockID.trim() !== ""
         );
-        console.log(`✅ 获取到 ${result.length} 个 BoundBlockIDs：`, result);
+        //console.log(`✅ 获取到 ${result.length} 个 BoundBlockIDs：`, result);
         return result;
       } else {
         return [];
@@ -91,10 +91,23 @@ export async function addAttributeViewBlocksByBlockIDs(
 
     console.log(`正在添加 ${blockIDs.length} 个块到数据库 ${avID}`);
 
+    //如果传入了viewName，可以先通过viewName获取viewID，再传给下面的API调用。
+    /*这里的实现逻辑是:使用 getViewIDByName(avID, viewName);
+     */
+    //如果没有传viewName，就用默认视图添加（使用undefined）。
     // 调用API添加块
-    const result = await AvAPI.addAttributeViewBlocks(avID, srcs);
+    const result = await AvAPI.addAttributeViewBlocks(
+      avID,
+      srcs,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false
+    );
 
     console.log(`成功添加 ${blockIDs.length} 个块到数据库`);
+
     return result;
   } catch (error) {
     console.error("添加块到数据库失败:", error);
@@ -102,6 +115,7 @@ export async function addAttributeViewBlocksByBlockIDs(
   }
 }
 
+/*下方的函数是废掉的，但先保留。不记得在其他地方有没有用了。（批量设置数据库字段值的完整版，包含设置字段值和重新渲染视图的逻辑；）
 export async function batchSetDatabaseField(
   avID: string,
   srcs: {
@@ -197,18 +211,84 @@ export async function batchSetDatabaseField(
     console.log(
       `成功为 ${updatePromises.length} 个条目设置字段 ${keyID} 的值为:`,
       value
-    );*/
+    );
   } catch (error) {
     console.error("批量设置数据库字段失败:", error);
     throw error;
   }
 }
+*/
 
 // 辅助函数：将blockIDs数组转换为块对象数组
-
 function processSrcsByBlockIDs(blockIDs) {
   return blockIDs.map((block) => ({
     id: block,
     isDetached: false,
   }));
+}
+
+/**
+ * 根据视图名称获取视图ID
+ * @param {string} avID - 属性视图ID
+ * @param {string} viewName - 视图名称
+ * @returns {Promise<string|undefined>} 视图ID，未找到时返回undefined
+ */
+async function getViewIDByName(avID, viewName) {
+  try {
+    // 参数验证
+    if (!avID || !viewName) {
+      throw new Error("avID 和 viewName 不能为空");
+    }
+
+    // 获取属性视图数据
+    const av = await AvAPI.getAttributeView(avID);
+
+    // 验证数据结构
+    if (!av || !Array.isArray(av.views)) {
+      throw new Error("获取的属性视图数据无效");
+    }
+
+    // 查找匹配的视图
+    const view = av.views.find((v) => v.name === viewName);
+    return view ? view.id : undefined;
+  } catch (error) {
+    console.error(
+      `获取视图ID失败 (avID: ${avID}, viewName: ${viewName}):`,
+      error.message
+    );
+    return undefined;
+  }
+}
+
+/**
+ * 根据属性名称获取keyID
+ * @param {string} avID - 属性视图ID
+ * @param {string} keyName - 属性名称
+ * @returns {Promise<string|undefined>} keyID，未找到时返回undefined
+ */
+async function getKeyIDByName(avID, keyName) {
+  try {
+    // 参数验证
+    if (!avID || !keyName) {
+      throw new Error("avID 和 keyName 不能为空");
+    }
+
+    // 获取属性视图数据
+    const av = await AvAPI.getAttributeView(avID);
+
+    // 验证数据结构
+    if (!av || !Array.isArray(av.keyValues)) {
+      throw new Error("获取的属性视图数据无效");
+    }
+
+    // 查找匹配的属性
+    const keyItem = av.keyValues.find((item) => item.name === keyName);
+    return keyItem ? keyItem.id : undefined;
+  } catch (error) {
+    console.error(
+      `获取keyID失败 (avID: ${avID}, keyName: ${keyName}):`,
+      error.message
+    );
+    return undefined;
+  }
 }

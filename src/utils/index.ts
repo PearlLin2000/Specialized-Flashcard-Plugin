@@ -18,3 +18,5 @@ export * from "./OpensydocFlow";
 
 // 番茄工作法扩展工具
 export * from "./tomatoExtensionUtils";
+
+export * from "./API/apiSiyuanAv";

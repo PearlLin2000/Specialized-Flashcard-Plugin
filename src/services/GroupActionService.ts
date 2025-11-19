@@ -12,8 +12,6 @@ export class GroupActionService {
   }
 
   async handleBatchPriority(group: GroupConfig): Promise<void> {
-    /*别问我为什么明明参数是blocks，却传入cards，我也想知道为什么cards基本可以，blocks就不行
-    两个参数的传入都有问题，但cards发生bug的概率小一点，就这样QAQ*/
     try {
       showMessage(
         `分组 "${group.name}" 已触发优先级的查询请求提交，请耐心等待...`
@@ -31,13 +29,10 @@ export class GroupActionService {
 
       let blocks = await CardUtils.getBlocksByIDs(blockIds);
 
-      // 筛选空的块
-      const emptyBlocks = blocks.filter(
-        (block) => !block.id || block.id.trim() === ""
+      // 安全的非空块过滤
+      blocks = blocks.filter(
+        (block) => block?.id && String(block.id).trim() !== ""
       );
-
-      // 去除空的块
-      blocks = blocks.filter((block) => block.id && block.id.trim() !== "");
 
       if (blocks.length === 0) {
         showMessage(`分组 "${group.name}" 未找到对应的闪卡块`);
@@ -46,46 +41,24 @@ export class GroupActionService {
 
       let cards = await CardUtils.getRiffCardsByBlockIds(blockIds);
 
-      // 筛选空的卡片
-      const emptyCards = cards.filter(
-        (card) => !card.id || card.id.trim() === ""
-      );
+      cards = cards.filter((card) => card?.id && String(card.id).trim() !== "");
 
-      // 去除空的卡片
-      cards = cards.filter((card) => card.id && card.id.trim() !== "");
+      // 使用分批次处理，每批1000张
+      const batchSize = 1000;
 
-      // 使用分批次处理，每批500张
-      const batchSize = 500;
-      const result1 = await this.setCardsPriorityInBatches(
-        blocks,
-        group.priority,
-        batchSize
-      );
-      if (result1.failCount === 0) {
-        showMessage(
-          `分组 "${group.name}" 的 ${result1.successCount} 张闪卡优先级已成功设置为 ${group.priority}`
-        );
-      } else {
-        showMessage(
-          `分组 "${group.name}" 的闪卡优先级设置完成：成功 ${result1.successCount} 张，失败 ${result1.failCount} 张`
-        );
-        console.log(
-          '分组 "${group.name}" 的闪卡优先级设置完成：成功 ${result1.successCount} 张，失败 ${result1.failCount} 张'
-        );
-      }
-      const result2 = await this.setCardsPriorityInBatches(
+      const result = await this.setCardsPriorityInBatches(
         cards,
         group.priority,
         batchSize
       );
 
-      if (result2.failCount === 0) {
+      if (result.failCount === 0) {
         showMessage(
-          `分组 "${group.name}" 的 ${result2.successCount} 张闪卡优先级已成功设置为 ${group.priority}`
+          `分组 "${group.name}" 的 ${result.successCount} 张闪卡优先级已成功设置为 ${group.priority}`
         );
       } else {
         showMessage(
-          `分组 "${group.name}" 的闪卡优先级设置完成：成功 ${result2.successCount} 张，失败 ${result2.failCount} 张`
+          `分组 "${group.name}" 的闪卡优先级设置完成：成功 ${result.successCount} 张，失败 ${result.failCount} 张`
         );
         console.log(
           '分组 "${group.name}" 的闪卡优先级设置完成：成功 ${result2.successCount} 张，失败 ${result2.failCount} 张'

@@ -5,6 +5,7 @@ import {
   MenuItemConfig,
   MenuServiceDependencies,
 } from "../types/menu";
+import { isNotSuspended } from "../utils/tomatoExtensionUtils";
 
 // 导入 GroupManager 组件
 import GroupManager from "../GroupManager/GroupManager.svelte";

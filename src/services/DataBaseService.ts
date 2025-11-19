@@ -18,7 +18,7 @@ export class DataBaseService {
       );
 
       if (blocks.length === 0) {
-        console.log("没有找到需要制卡的块");
+        //console.log("没有找到需要制卡的块");
         return;
       }
 
@@ -32,12 +32,12 @@ export class DataBaseService {
       );
 
       if (result) {
-        console.log(`成功为 ${blockIDs.length} 个块创建闪卡`);
+        console.log(`成功为 ${viewName} 的 ${blockIDs.length} 个块创建闪卡`);
       } else {
         console.error("制卡失败");
       }
     } catch (error) {
-      console.error("制卡流程执行失败:", error);
+      console.error(" ${viewName} 的制卡流程执行失败:", error);
     }
   }
 
@@ -57,7 +57,7 @@ export class DataBaseService {
       );
 
       if (blocks.length === 0) {
-        console.log("没有找到需要取消制卡的块");
+        //console.log("没有找到需要取消制卡的块");
         return;
       }
 
@@ -71,12 +71,12 @@ export class DataBaseService {
       );
 
       if (result) {
-        console.log(`成功为 ${blockIDs.length} 个块取消闪卡`);
+        console.log(`成功为 ${viewName} 的 ${blockIDs.length} 个块取消闪卡`);
       } else {
         console.error("取消制卡失败");
       }
     } catch (error) {
-      console.error("取消制卡流程执行失败:", error);
+      console.error("${viewName} 的取消制卡流程执行失败:", error);
     }
   }
 
@@ -102,10 +102,7 @@ export class DataBaseService {
       if (allBlocks.length === 0) {
         return [];
       }
-      console.log(
-        `DataBaseService- 获取属性视图块数据: 共获取到 ${allBlocks.length} 个块：`,
-        allBlocks
-      );
+
       // 4. 根据闪卡属性筛选 - 优化为单次循环
       let hasRiffCards = [];
       let noRiffCards = [];
@@ -125,8 +122,6 @@ export class DataBaseService {
       return [];
     }
   }
-
-  // DataBaseService.ts - 新增函数
 
   /**
    * 根据SQL查询结果将块添加到属性视图
@@ -162,10 +157,7 @@ export class DataBaseService {
       }
 
       // 3. 通过addAttributeViewBlocksByBlockIDs添加块到属性视图
-      const result = await Utils.addAttributeViewBlocksByBlockIDs(
-        avID,
-        blockIDs
-      );
+      await Utils.addAttributeViewBlocksByBlockIDs(avID, blockIDs);
 
       return {
         success: true,

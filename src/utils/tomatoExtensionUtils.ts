@@ -29,7 +29,7 @@ export function filterPureTodayCards(cards: any[]): any[] {
 }
 
 export async function setCardsPriority(
-  blocks: any[],
+  cards: any[],
   priority: number
 ): Promise<void> {
   if (
@@ -40,7 +40,7 @@ export async function setCardsPriority(
   }
   try {
     await window.tomato_zZmqus5PtYRi.cardPriorityBox.updateDocPriorityBatchDialog(
-      blocks,
+      cards,
       priority,
       false
     );
@@ -50,11 +50,11 @@ export async function setCardsPriority(
   }
 }
 
-export async function postponeCards(blocks, days: number): Promise<void> {
-  if (blocks.length === 0) return;
+export async function postponeCards(cards, days: number): Promise<void> {
+  if (cards.length === 0) return;
   try {
     await window.tomato_zZmqus5PtYRi.cardPriorityBox.stopCards(
-      blocks,
+      cards,
       false,
       days.toString()
     );

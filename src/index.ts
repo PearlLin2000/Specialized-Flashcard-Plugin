@@ -31,11 +31,12 @@ export default class PluginSample extends Plugin {
     // 注册快捷键命令
     this.addCommand({
       langKey: "executeDataBaseCardsManagement",
-      langText: "触发：数据库相关功能使用",
+      langText: "触发：一键刷新",
       hotkey: "", // 留空让用户自定义
       callback: () => {
+        this.startScheduledTasks();
         this.executeDataBaseCardsManagement();
-        showMessage("专项闪卡：已触发数据库相关刷新");
+        showMessage("专项闪卡：已触发所有自动化刷新");
       },
     });
 
@@ -180,35 +181,39 @@ export default class PluginSample extends Plugin {
 
   private async executeDataBaseCardsManagement(): Promise<void> {
     try {
-      console.log("===============================");
-      console.log("执行数据库卡片管理任务...");
-      console.log("视图：制卡");
+      console.log("开始执行数据库制卡/取消制卡任务");
       await DataBaseService.processCardCreation(
         "20250920100057-khqfv5y",
-        "制卡"
+        "状态：进行"
       );
-      console.log("视图：取消制卡");
+
       await DataBaseService.processCardRemoval(
         "20250920100057-khqfv5y",
-        "取消制卡"
+        "状态：悬置"
       );
-      console.log("视图：取消制卡2");
+
       await DataBaseService.processCardRemoval(
         "20250920100057-khqfv5y",
-        "取消制卡2"
+        "状态：结束"
       );
+
       // 执行测试
       await this.addBlocksToViewBySQL();
     } catch (error) {
-      console.error("数据库卡片管理任务执行失败:", error);
+      console.error("数据库制卡/取消制卡执行失败:", error);
     }
   }
-  // 测试代码 - 使用新增的 addBlocksToViewBySQL 函数
 
   private async addBlocksToViewBySQL(): Promise<void> {
     try {
-      // 1. 定义 SQL 查询
-      const SQL = `
+      console.log("开始使用 addBlocksToViewBySQL 函数");
+      // 1. 定义属性视图 ID
+      const avID = "20250920100057-khqfv5y";
+      // 2. 定义视图名称
+      const av = Utils.getAttributeView(avID);
+      console.log(av);
+      // 2. 定义 SQL 查询
+      let SQL1 = `
       select * from blocks
       where id in (
           select block_id from attributes where name = 'custom-reservation'
@@ -219,29 +224,42 @@ export default class PluginSample extends Plugin {
           and value like '%20250920100057-khqfv5y%'
       ) limit 99
     `;
+      //3. 添加进日程数据库
+      let result1 = await DataBaseService.addBlocksToViewBySQL(SQL1, avID);
 
-      // 2. 定义属性视图 ID
-      const avID = "20250920100057-khqfv5y";
-
-      // 3. 调用 DataBaseService.addBlocksToViewBySQL
-      console.log("开始执行 addBlocksToViewBySQL 测试...");
-      console.log(`SQL: ${SQL}`);
-      console.log(`avID: ${avID}`);
-
-      const result = await DataBaseService.addBlocksToViewBySQL(SQL, avID);
+      console.log(`SQL: ${SQL1}`);
 
       // 4. 输出结果
       console.log("执行结果:", {
-        成功: result.success,
-        添加数量: result.addedCount,
-        消息: result.message,
+        成功: result1.success,
+        添加数量: result1.addedCount,
+        消息: result1.message,
       });
 
-      if (result.success) {
-        console.log(`✅ 测试成功！${result.message}`);
-      } else {
-        console.log(`❌ 测试失败：${result.message}`);
-      }
+      // 2. 定义 SQL 查询
+      let SQL2 = `
+      select * from blocks
+      where id in (
+          select block_id from attributes where name = 'custom-tomato-readingpoint'
+      )
+      and id not in (
+          select block_id from attributes 
+          where name = 'custom-avs' 
+          and value like '%20250920100057-khqfv5y%'
+      ) 
+      limit 999
+    `;
+      //3. 添加进日程数据库
+      let result2 = await DataBaseService.addBlocksToViewBySQL(SQL2, avID);
+
+      console.log(`SQL: ${SQL2}`);
+
+      // 4. 输出结果
+      console.log("执行结果:", {
+        成功: result2.success,
+        添加数量: result2.addedCount,
+        消息: result2.message,
+      });
     } catch (error) {
       console.error("测试过程中发生错误:", error);
     }
